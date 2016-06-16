@@ -61,6 +61,6 @@ class readDatFile:
 
             return (1, image_decoded)
         else:
-            return (0, [])
+            return (0, [], [], [])
     def release(self):
         pass
