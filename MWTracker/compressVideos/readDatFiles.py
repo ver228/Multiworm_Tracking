@@ -17,7 +17,7 @@ class readDatFiles:
         #get the order of the frames from the file name. 
         file_num_str = [os.path.split(x)[1].partition('spool')[0] for x in self.files]
         #first we assume that the filename contains the frame number 00001, 00002, 00003
-        self.dat_order = sorted([int(x) for x in file_num_str])
+        self.dat_order = sorted([int(x) for x in file_num_str]) # I'm not sure this is doing the right thing, as we order the numbers but don't keep track of what this permutation was, i.e. we don't really want the sorted list, but the sorting indices
         #check in the indexes in the file order are really continuous. The ordered index should go 1, 2, 3, 4
         is_continous =  all(np.diff(self.dat_order)==1)
         if not is_continous:
@@ -41,7 +41,7 @@ class readDatFiles:
     def read(self): 
         self.curr_frame += 1
         if self.curr_frame < self.num_frames:
-            fname = self.files[self.dat_order[self.curr_frame]]
+            fname = self.files[self.dat_order[self.curr_frame]] # is this indexing correct, or do we need to shift down by one?
             bin_dat = np.fromfile(fname, np.uint8)
             #every 3 bytes will correspond two pixel levels.
             D1 = bin_dat[:-40:3] 

@@ -1,3 +1,3 @@
 {"is_invert_thresh": true, "thresh_block_size": 15, "thresh_C": 5, "dilation_size": 10, "min_area": 50, 
  "max_area": 5000, "has_timestamp": false, 
-"keep_border_data": false, "compression_buff": 1}
+"keep_border_data": false, "compression_buff": 2}
