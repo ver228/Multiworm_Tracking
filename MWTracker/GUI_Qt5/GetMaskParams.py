@@ -5,8 +5,9 @@ import cv2
 from functools import partial
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, \
-QFileDialog, QMessageBox, QCheckBox
+QFileDialog, QMessageBox, QCheckBox, QButtonGroup, QLabel
 from PyQt5.QtCore import Qt
+from PyQt5 import QtCore
 from PyQt5.QtGui import QImage
 
 from MWTracker.GUI_Qt5.GetMaskParams_ui import Ui_GetMaskParams
@@ -19,6 +20,8 @@ from MWTracker.helperFunctions.tracker_param import tracker_param
 from MWTracker.compressVideos.compressVideo import getROIMask, selectVideoReader, reduceBuffer
 from MWTracker.batchProcessing.ProcessWormsWorker import ProcessWormsWorker
 from MWTracker.batchProcessing.helperFunc import getDefaultSequence
+
+from MWTracker.backgroundSubtraction import backgroundSubtraction
 
 class twoViewsWithZoom():
 
@@ -117,6 +120,12 @@ class ParamWidgetMapper():
         widget = self.param2widget[param_name]
         if isinstance(widget, QCheckBox):
             return widget.setChecked(value)
+        elif isinstance(widget, QButtonGroup):
+            for button in widget.buttons():
+                if button.text().replace(" ", "_").upper() == value:
+                    return button.setChecked(True)
+        elif isinstance(widget, QLabel):
+            return widget.setText(value)
         else:
             return widget.setValue(value)
 
@@ -124,6 +133,10 @@ class ParamWidgetMapper():
         widget = self.param2widget[param_name]
         if isinstance(widget, QCheckBox):
             return widget.isChecked()
+        elif isinstance(widget, QButtonGroup):
+            return widget.checkedButton().text().replace(" ", "_").upper()
+        elif isinstance(widget, QLabel):
+            return widget.text()
         else:
             return widget.value()
 
@@ -169,6 +182,26 @@ class GetMaskParams_GUI(QMainWindow):
         self.ui.pushButton_start.clicked.connect(self.startAnalysis)
 
         self.ui.pushButton_moreParams.clicked.connect(self.getMoreParams)
+
+        self.ui.checkBox_subtractBackground.clicked.connect(self.updateMask)
+        self.ui.checkBox_ignoreMask.clicked.connect(self.updateMask)
+        self.ui.spinBox_backgroundThreshold.valueChanged.connect(self.updateMask)
+        self.ui.spinBox_backgroundFrameOffset.valueChanged.connect(self.updateMask)
+
+        self.ui.radioButton_backgroundGenerationFunction_minimum.clicked.connect(self.updateMask)
+        self.ui.radioButton_backgroundGenerationFunction_maximum.clicked.connect(self.updateMask)
+
+        self.ui.pushButton_backgroundFile.clicked.connect(self.loadBackgroundImage)
+        self.ui.toolButton_clearBackgroundFile.clicked.connect(self.clearBackgroundImage)
+
+        self.ui.radioButton_backgroundType_dynamic.clicked.connect(self.updateMask)
+        self.ui.radioButton_backgroundType_file.clicked.connect(self.updateMask)
+
+        self.ui.radioButton_analysisType_worm.clicked.connect(lambda: self.ui.groupBox_zebrafishOptions.hide())
+        self.ui.radioButton_analysisType_zebrafish.clicked.connect(lambda: self.ui.groupBox_zebrafishOptions.show())
+
+        self.ui.checkBox_autoDetectTailLength.clicked.connect(self.updateFishLengthOptions)
+
         self.mask_files_dir = ''
         self.results_dir = ''
 
@@ -188,7 +221,25 @@ class GetMaskParams_GUI(QMainWindow):
             'keep_border_data': self.ui.checkBox_keepBorderData,
             'is_light_background': self.ui.checkBox_isLightBgnd,
             'fps': self.ui.spinBox_fps,
-            'compression_buff': self.ui.spinBox_buff_size
+            'compression_buff': self.ui.spinBox_buff_size,
+            'use_background_subtraction': self.ui.checkBox_subtractBackground,
+            'background_threshold': self.ui.spinBox_backgroundThreshold,
+            'ignore_mask': self.ui.checkBox_ignoreMask,
+            'background_type': self.ui.buttonGroup_backgroundType,
+            'background_frame_offset': self.ui.spinBox_backgroundFrameOffset,
+            'background_generation_function': self.ui.buttonGroup_backgroundGenerationFunction,
+            'background_file': self.ui.label_backgroundFile,
+            'analysis_type': self.ui.buttonGroup_analysisType,
+            'zf_num_segments': self.ui.spinBox_zf_numberOfSegments,
+            'zf_min_angle': self.ui.spinBox_zf_minAngle,
+            'zf_max_angle': self.ui.spinBox_zf_maxAngle,
+            'zf_num_angles': self.ui.spinBox_zf_anglesPerSegment,
+            'zf_tail_length': self.ui.spinBox_zf_tailLength,
+            'zf_tail_detection': self.ui.buttonGroup_zf_tailPointDetectionAlgorithm,
+            'zf_prune_retention': self.ui.spinBox_zf_pruneRetention,
+            'zf_test_width': self.ui.spinBox_zf_segmentTestWidth,
+            'zf_draw_width': self.ui.spinBox_zf_segmentDrawWidth,
+            'zf_auto_detect_tail_length': self.ui.checkBox_autoDetectTailLength
         })
 
         self.videos_dir = default_videos_dir
@@ -226,6 +277,10 @@ class GetMaskParams_GUI(QMainWindow):
         # make sure the childrenfocus policy is none in order to be able to use
         # the arrow keys
         setChildrenFocusPolicy(self, Qt.ClickFocus)
+
+        # Hide zebrafish options if Analysis Type is set to 'Worm'
+        if not self.ui.radioButton_analysisType_zebrafish.isChecked():
+            self.ui.groupBox_zebrafishOptions.hide()
 
     def closeEvent(self, event):
         if not isinstance(self.vid, int):
@@ -415,6 +470,15 @@ class GetMaskParams_GUI(QMainWindow):
             json_file = self.video_file.rpartition('.')[0] + '.json'
             self.updateParamFile(json_file)
 
+            # Update interface
+            if self.ui.radioButton_analysisType_zebrafish.isChecked():
+                self.ui.groupBox_zebrafishOptions.show()
+            else:
+                self.ui.groupBox_zebrafishOptions.hide()
+
+            # Update enabled/disabled state of fish length options
+            self.updateFishLengthOptions()
+
             # get next chuck
             self.getNextChunk()
 
@@ -444,15 +508,74 @@ class GetMaskParams_GUI(QMainWindow):
                     image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
                 Ibuff[ii] = image
+
                 tot += 1
+
             if tot < self.buffer_size:
                 return
 
             is_light_background = self.mapper.get('is_light_background')
             self.Imin = reduceBuffer(Ibuff, is_light_background)
+
             self.Ifull = Ibuff[0]
 
             self.updateMask()
+
+
+    def updateIminBgSub(self):
+
+        if self.vid:
+
+            th = self.mapper.get("background_threshold")
+            frame_offset = self.mapper.get("background_frame_offset")
+            generation_function = self.mapper.get('background_generation_function')
+
+            # read the buffsize before getting the next chunk
+            self.updateBuffSize()
+
+            Ibuff = np.zeros(
+                (self.buffer_size,
+                 self.im_height,
+                 self.im_width),
+                dtype=np.uint8)
+
+            # 'Rewind' video to read in frames again
+            current_frame_num = self.vid.get(cv2.CAP_PROP_POS_FRAMES)
+            self.vid.set(cv2.CAP_PROP_POS_FRAMES, current_frame_num - self.buffer_size)
+
+            tot = 0
+            for ii in range(self.buffer_size):
+                # get video frame, stop program when no frame is retrive (end
+                # of file)
+                ret, image = self.vid.read()
+
+                if ret == 0:
+                    break
+                if image.ndim == 3:
+                    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+
+                # If dynamic background subtraction selected
+                if self.ui.radioButton_backgroundType_dynamic.isChecked():
+                    bg_img = backgroundSubtraction.getBackground(self.vid, self.video_file, image, frame_offset, generation_function)
+                    Ibuff[ii] = backgroundSubtraction.applyBackgroundSubtraction(image, bg_img, th)
+                else:
+                    # Background from file
+                    bg_img = self.getBackgroundFile()
+                    if bg_img is False:
+                        Ibuff[ii] = image
+                    else:
+                        Ibuff[ii] = backgroundSubtraction.applyBackgroundSubtraction(image, bg_img, th)
+
+                tot += 1
+
+            if tot < self.buffer_size:
+                return
+
+            is_light_background = self.mapper.get('is_light_background')
+            self.Imin_bg_sub = reduceBuffer(Ibuff, is_light_background)
+
+            self.Ifull_bg_sub = Ibuff[0]
+
 
     def _numpy2qimage(self, im_ori):
         return QImage(im_ori.data, im_ori.shape[1], im_ori.shape[0],
@@ -481,8 +604,40 @@ class GetMaskParams_GUI(QMainWindow):
                 'is_light_background']:
             mask_param[param_name] = self.mapper.get(param_name)
 
-        mask = getROIMask(self.Imin.copy(), **mask_param)
-        self.Imask = mask * self.Ifull
+
+        # Background subtraction check
+        if self.mapper.get('use_background_subtraction'):
+
+            # Ignore mask check
+            if self.mapper.get('ignore_mask'):
+
+                th = self.mapper.get("background_threshold")
+                frame_offset = self.mapper.get("background_frame_offset")
+                generation_function = self.mapper.get('background_generation_function')
+
+                # If dynamic background subtraction is selected
+                if self.ui.radioButton_backgroundType_dynamic.isChecked():
+                    bg_img = backgroundSubtraction.getBackground(self.vid, self.video_file, self.Ifull, frame_offset, generation_function)
+                    self.Imask = backgroundSubtraction.applyBackgroundSubtraction(self.Ifull, bg_img, th)
+                else:
+                    # Background from file
+                    bg_img = self.getBackgroundFile()
+                    if bg_img is False:
+                        self.Imask = self.Ifull
+                    else:
+                        self.Imask = backgroundSubtraction.applyBackgroundSubtraction(self.Ifull, bg_img, th)
+
+            else:
+
+                self.updateIminBgSub()
+                mask = getROIMask(self.Imin_bg_sub.copy(), **mask_param)
+                self.Imask = mask * self.Ifull_bg_sub
+
+        else:
+
+            mask = getROIMask(self.Imin.copy(), **mask_param)
+            self.Imask = mask * self.Ifull
+
 
         self.updateImage()
 
@@ -549,6 +704,50 @@ class GetMaskParams_GUI(QMainWindow):
         allparamGUI = GetAllParameters(json_file)
         allparamGUI.file_saved.connect(self.updateParamFile)
         allparamGUI.exec_()
+
+
+    def getBackgroundFile(self):
+        # If a background image file has been loaded, return it. Otherwise return False
+
+        file = self.mapper.get("background_file")
+
+        if file == "" or file == "None":
+            return False
+
+        # If the background image file has not been loaded already, load it now
+        if not hasattr(self, 'static_bg') or self.static_bg is None:
+            self.static_bg = cv2.imread(file, cv2.IMREAD_GRAYSCALE)
+
+        return self.static_bg
+
+
+    def loadBackgroundImage(self):
+        image_file, _ = QFileDialog.getOpenFileName(self, "Load background image", self.videos_dir, "Image Files (*.png *.jpg *.bmp);; All files (*)")
+
+        if os.path.exists(image_file):
+            self.ui.label_backgroundFile.setText(image_file)
+            self.static_bg = cv2.imread(image_file, cv2.IMREAD_GRAYSCALE)
+            self.updateMask()
+
+
+    def clearBackgroundImage(self):
+        self.ui.label_backgroundFile.setText("None")
+        self.static_bg = None
+        self.updateMask()
+
+
+    def updateFishLengthOptions(self):
+
+        val = not self.ui.checkBox_autoDetectTailLength.isChecked()
+
+        self.ui.spinBox_zf_tailLength.setEnabled(val)
+        self.ui.label_zf_tailLength.setEnabled(val)
+
+        self.ui.spinBox_zf_numberOfSegments.setEnabled(val)
+        self.ui.label_zf_numberOfSegments.setEnabled(val)
+
+        self.ui.spinBox_zf_segmentTestWidth.setEnabled(val)
+        self.ui.label_zf_segmentTestWidth.setEnabled(val)
 
 
 if __name__ == '__main__':

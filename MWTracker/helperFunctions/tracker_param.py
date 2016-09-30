@@ -44,7 +44,25 @@ dflt_param_list = [
     ('int_avg_width_frac', 0.3, ''),
     ('int_width_resampling', 15, ''),
     ('int_length_resampling', 131, ''),
-    ('int_max_gap_allowed_block', -1, '')
+    ('int_max_gap_allowed_block', -1, ''),
+    ('use_background_subtraction', False, 'Flag to determine whether background should be subtracted from original frames.'),
+    ('background_threshold', 1, 'Threshold value to use when applying background subtraction.'),
+    ('ignore_mask', False, 'Mask is not used if set to True. Only applies if background subtraction is also active.'),
+    ('background_type', 'GENERATE_DYNAMICALLY', 'If background subtraction is enabled, determines whether background is generated dynamically or loaded from a file'),
+    ('background_frame_offset', 500, 'Number of frames offset from current frame used for generating background images.'),
+    ('background_generation_function', 'MAXIMUM', 'Function to apply to frames in order to generate background images.'),
+    ('background_file', '', 'Image file to use for background subtraction. If a filepath is set here, this file will be used instead of dynamically-generated background images.'),
+    ('analysis_type', 'WORM', 'Analysis functions to use.'),
+    ('zf_num_segments', 12, 'Number of segments to use in tail model.'),
+    ('zf_min_angle', -90, 'The lowest angle to test for each segment. Angles are set relative to the angle of the previous segment.'),
+    ('zf_max_angle', 90, 'The highest angle to test for each segment.'),
+    ('zf_num_angles', 90, 'The total number of angles to test for each segment. Eg., If the min angle is -90 and the max is 90, setting this to 90 will test every 2 degrees, as follows: -90, -88, -86, ...88, 90.'),
+    ('zf_tail_length', 60, 'The total length of the tail model in pixels.'),
+    ('zf_tail_detection', 'MODEL_END_POINT', 'Algorithm to use to detect the fish tail point.'),
+    ('zf_prune_retention', 1, 'Number of models to retain after scoring for each round of segment addition. Higher numbers will be much slower.'),
+    ('zf_test_width', 2, 'Width of the tail in pixels. This is used only for scoring the model against the test frame.'),
+    ('zf_draw_width', 2, 'Width of the tail in pixels. This is used for drawing the final model.'),
+    ('zf_auto_detect_tail_length', True, 'Flag to determine whether zebrafish tail length detection is used. If set to True, values for zf_tail_length, zf_num_segments and zf_test_width are ignored.')
 ]
 
 default_param = {x: y for x, y, z in dflt_param_list}
@@ -96,7 +114,25 @@ class tracker_param:
             int_avg_width_frac,
             int_width_resampling,
             int_length_resampling,
-            int_max_gap_allowed_block):
+            int_max_gap_allowed_block,
+            use_background_subtraction,
+            ignore_mask,
+            background_type,
+            background_threshold,
+            background_frame_offset,
+            background_generation_function,
+            background_file,
+            analysis_type,
+            zf_num_segments,
+            zf_min_angle,
+            zf_max_angle,
+            zf_num_angles,
+            zf_tail_length,
+            zf_tail_detection,
+            zf_prune_retention,
+            zf_test_width,
+            zf_draw_width,
+            zf_auto_detect_tail_length):
 
         if not isinstance(expected_fps, int):
             expected_fps = int(expected_fps)
@@ -119,7 +155,14 @@ class tracker_param:
             'save_full_interval': 200 * expected_fps,
             'max_frame': 1e32,
             'mask_param': self.mask_param,
-            'expected_fps': expected_fps}
+            'expected_fps': expected_fps,
+            'use_background_subtraction': use_background_subtraction,
+            'ignore_mask': ignore_mask,
+            'background_type': background_type,
+            'background_threshold': background_threshold,
+            'background_frame_offset': background_frame_offset,
+            'background_generation_function': background_generation_function,
+            'background_file': background_file}
         
         # getWormTrajectories
         self.trajectories_param = {
@@ -136,7 +179,8 @@ class tracker_param:
             'worm_bw_thresh_factor': worm_bw_thresh_factor,
             'strel_size': (
                 strel_size,
-                strel_size)}
+                strel_size),
+            'analysis_type': analysis_type}
 
         # joinTrajectories
         min_track_size = max(1, fps_filter * 2)
@@ -153,7 +197,8 @@ class tracker_param:
             'min_track_size': min_track_size,
             'displacement_smooth_win': expected_fps + 1,
             'threshold_smooth_win': expected_fps * 20 + 1,
-            'roi_size': -1}
+            'roi_size': -1,
+            'analysis_type': analysis_type}
 
         # trajectories2Skeletons
         self.skeletons_param = {
@@ -163,7 +208,18 @@ class tracker_param:
                 0.67),
             'min_mask_area': min_area / 2,
             'smoothed_traj_param': self.smoothed_traj_param,
-            'strel_size': strel_size}
+            'strel_size': strel_size,
+            'analysis_type': analysis_type,
+            'zf_num_segments': zf_num_segments,
+            'zf_min_angle': zf_min_angle,
+            'zf_max_angle': zf_max_angle,
+            'zf_num_angles': zf_num_angles,
+            'zf_tail_length': zf_tail_length,
+            'zf_tail_detection': zf_tail_detection,
+            'zf_prune_retention': zf_prune_retention,
+            'zf_test_width': zf_test_width,
+            'zf_draw_width': zf_draw_width,
+            'zf_auto_detect_tail_length': zf_auto_detect_tail_length}
 
         # correctHeadTail
         if max_gap_allowed_block < 0:

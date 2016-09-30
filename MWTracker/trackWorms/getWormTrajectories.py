@@ -61,7 +61,7 @@ class plate_worms(tables.IsDescription):
 
 
 def _getWormThreshold(pix_valid):
-    
+
     # calculate otsu_threshold as lower limit. Otsu understimates the threshold.
     try:
         otsu_thresh = threshold_otsu(pix_valid)
@@ -269,7 +269,8 @@ def getWormTrajectories(
         worm_bw_thresh_factor=1.,
         strel_size=(
             5,
-        5)):
+        5),
+    analysis_type="WORM"):
     '''
     #read images from 'masked_image_file', and save the linked trajectories and their features into 'trajectories_file'
     #use the first 'total_frames' number of frames, if it is equal -1, use all the frames in 'masked_image_file'
@@ -375,14 +376,22 @@ def getWormTrajectories(
                     # no valid pixels in this buffer, nothing to do here
                     continue
                 # caculate threshold
-                if is_light_background:
-                    thresh = _getWormThreshold(pix_valid)
-                else:
-                    #invert pixel values
-                    thresh = _getWormThreshold(max_pix_allowed - pix_valid)
-                    thresh = max_pix_allowed - thresh
+                if analysis_type == "WORM":
 
-                thresh *= worm_bw_thresh_factor
+                    if is_light_background:
+                        thresh = _getWormThreshold(pix_valid)
+                    else:
+                        #invert pixel values
+                        thresh = _getWormThreshold(max_pix_allowed - pix_valid)
+                        thresh = max_pix_allowed - thresh
+
+                    thresh *= worm_bw_thresh_factor
+
+                elif analysis_type == "ZEBRAFISH":
+
+                    # Override threshold and min_area
+                    thresh = 255
+                    min_area = 30
 
                 if buff_last_coord.size != 0:
                     # select data from previous trajectories only within the contour bounding box.

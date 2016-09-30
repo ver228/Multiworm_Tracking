@@ -4,6 +4,7 @@ Created on Thu Apr  2 13:19:58 2015
 
 @author: ajaver
 """
+import math
 import numpy as np
 import cv2
 import h5py
@@ -18,6 +19,9 @@ from .readDatFiles import readDatFiles
 from .readTifFiles import readTifFiles
 
 from ..helperFunctions.timeCounterStr import timeCounterStr
+
+from ..backgroundSubtraction import backgroundSubtraction
+
 
 def isGoodVideo(video_file):
     try:
@@ -207,7 +211,9 @@ def reduceBuffer(Ibuff, is_light_background):
         
 
 def compressVideo(video_file, masked_image_file, mask_param, buffer_size=25,
-                  save_full_interval=5000, max_frame=1e32, expected_fps=25):
+                  save_full_interval=5000, max_frame=1e32, expected_fps=25,
+                  use_background_subtraction=False, ignore_mask=False, background_type='GENERATE_DYNAMICALLY',
+                  background_threshold=15, background_frame_offset=500, background_generation_function='MAXIMUM', background_file=''):
     '''
     Compresses video by selecting pixels that are likely to have worms on it and making the rest of
     the image zero. By creating a large amount of redundant data, any lossless compression
@@ -334,6 +340,42 @@ def compressVideo(video_file, masked_image_file, mask_param, buffer_size=25,
         # initialize timers
         progressTime = timeCounterStr('Compressing video.')
 
+        # If set from file, load background image and save it to the HDF5 file
+        if use_background_subtraction and background_type == 'FROM_FILE' and background_file != '':
+
+            bg_from_file = cv2.imread(background_file, cv2.IMREAD_GRAYSCALE)
+
+            num_backgrounds = 1
+            background_dataset = mask_fid.create_dataset(
+                "/background",
+                (num_backgrounds,
+                 im_height,
+                 im_width),
+                dtype="u1",
+                maxshape=(
+                    None,
+                    im_height,
+                    im_width),
+                chunks=(
+                    1,
+                    im_height,
+                    im_width),
+                compression="gzip",
+                compression_opts=4,
+                shuffle=True,
+                fletcher32=True)
+
+            # attribute labels to make the group compatible with the standard image
+            # definition in hdf5
+            background_dataset.attrs["CLASS"] = np.string_("IMAGE")
+            background_dataset.attrs["IMAGE_SUBCLASS"] = np.string_("IMAGE_GRAYSCALE")
+            background_dataset.attrs["IMAGE_WHITE_IS_ZERO"] = np.array(0, dtype="uint8")
+            background_dataset.attrs["DISPLAY_ORIGIN"] = np.string_("UL")  # not rotated
+            background_dataset.attrs["IMAGE_VERSION"] = np.string_("1.2")
+
+            background_dataset[0, :, :] = bg_from_file
+
+
         while frame_number < max_frame:
 
             ret, image = vid.read()
@@ -385,6 +427,14 @@ def compressVideo(video_file, masked_image_file, mask_param, buffer_size=25,
                     Ibuff = np.zeros(
                         (buffer_size, im_height, im_width), dtype=np.uint8)
 
+                # Subtract background if flag set
+                if use_background_subtraction:
+                    if background_type == 'GENERATE_DYNAMICALLY':
+                        bg_img = backgroundSubtraction.getBackground(vid, video_file, image, background_frame_offset, background_generation_function)
+                        image = backgroundSubtraction.applyBackgroundSubtraction(image, bg_img, background_threshold)
+                    elif background_type == 'FROM_FILE':
+                        image = backgroundSubtraction.applyBackgroundSubtraction(image, bg_from_file, background_threshold)
+
                 # add image to the buffer
                 Ibuff[ind_buff, :, :] = image.copy()
 
@@ -399,14 +449,18 @@ def compressVideo(video_file, masked_image_file, mask_param, buffer_size=25,
 
             # mask buffer and save data into the hdf5 file
             if (ind_buff == buffer_size - 1 or ret == 0) and Ibuff.size > 0:
+
                 #calculate the max/min in the of the buffer
                 img_reduce = reduceBuffer(Ibuff, mask_param['is_light_background'])
-                
+
                 # calculate the mask only when the buffer is full or there are
                 # no more frames left
-                mask = getROIMask(img_reduce, **mask_param)
-                # mask all the images in the buffer
-                Ibuff *= mask
+
+                # Mask all the images in the buffer, as long as both 'Use Background Subtraction' and 'Ignore Mask' are not both set
+                if not (use_background_subtraction and ignore_mask):
+                    mask = getROIMask(img_reduce, **mask_param)
+                    Ibuff *= mask
+
                 # add buffer to the hdf5 file
                 frame_first_buff = frame_number - Ibuff.shape[0]
                 mask_dataset[frame_first_buff:frame_number, :, :] = Ibuff

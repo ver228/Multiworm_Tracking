@@ -181,6 +181,10 @@ def resample_curve(curve, resampling_N=49, widths=np.zeros(0)):
     lengths = np.hstack((0, lengths))  # add the first point
     tot_length = lengths[-1]
 
+    # Verify array lengths
+    if len(lengths) < 2 or len(curve) < 2:
+        return None, None, None
+
     fx = interp1d(lengths, curve[:, 0])
     fy = interp1d(lengths, curve[:, 1])
 

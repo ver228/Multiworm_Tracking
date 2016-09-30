@@ -14,6 +14,7 @@ Created on Fri Mar 13 19:39:41 2015
 import pandas as pd
 # h5py gives an error when I tried to do a large amount of write
 # operations (~1e6)
+import math
 import tables
 import os
 import sys
@@ -26,7 +27,10 @@ from scipy.signal import savgol_filter
 from scipy.interpolate import interp1d
 
 from MWTracker.helperFunctions.timeCounterStr import timeCounterStr
-from MWTracker.trackWorms.segWormPython.mainSegworm import getSkeleton
+from MWTracker.trackWorms.segWormPython.mainSegworm import getSkeleton, resampleAll
+
+from MWTracker.zebrafishAnalysis import zebrafishAnalysis
+from MWTracker.zebrafishAnalysis import zebrafishSkeleton
 
 # pytables filters.
 TABLE_FILTERS = tables.Filters(
@@ -219,11 +223,16 @@ def _getSmoothTrajectories(
         roi_size=-1,
         min_track_size=100,
         displacement_smooth_win=101,
-        threshold_smooth_win=501):
+        threshold_smooth_win=501,
+        analysis_type='WORM'):
     '''
     Smooth trajectories and thresholds created by getWormTrajectories.
     -> Used by trajectories2Skeletons
     '''
+
+    # Use a fixed roi_size if Analysis Type is Zebrafish
+    if analysis_type == 'ZEBRAFISH':
+        roi_size = 200
 
     # a track size less than 2 will break the interp_1 function
     if min_track_size < 2:
@@ -525,7 +534,10 @@ def _getTrajFields(ske_file_id):
     
 
 def trajectories2Skeletons(masked_image_file, skeletons_file, trajectories_file, create_single_movies=False,
-    resampling_N=49, min_mask_area=50, strel_size=5, smoothed_traj_param={}, worm_midbody=(0.35, 0.65)):
+    resampling_N=49, min_mask_area=50, strel_size=5, smoothed_traj_param={}, worm_midbody=(0.35, 0.65),
+    analysis_type="WORM", zf_num_segments=12, zf_min_angle=-90, zf_max_angle=90, zf_num_angles=90, zf_tail_length=60,
+    zf_tail_detection='MODEL_END_POINT', zf_prune_retention=1, zf_test_width=2, zf_draw_width=2,
+    zf_auto_detect_tail_length=True):
 
     #get the index number for the width limit
     midbody_ind = (int(np.floor(
@@ -559,6 +571,7 @@ def trajectories2Skeletons(masked_image_file, skeletons_file, trajectories_file,
         # dictionary to store previous skeletons
         prev_skeleton = {}
 
+
         # timer
         progressTime = timeCounterStr('Calculating skeletons.')
         for frame, frame_data in trajectories_df.groupby('frame_number'):
@@ -567,12 +580,48 @@ def trajectories2Skeletons(masked_image_file, skeletons_file, trajectories_file,
 
                 worm_img, roi_corner = getWormROI(
                     img, row_data['coord_x'], row_data['coord_y'], row_data['roi_size'])
-                worm_mask, worm_cnt, cnt_area = getWormMask(
-                    worm_img, row_data['threshold'], strel_size, 
-                    min_mask_area=row_data['area'] / 2, is_light_background = is_light_background)
 
-                if worm_cnt.size == 0:
-                    continue
+
+                # get the previous worm skeletons to orient them
+                worm_index = row_data['worm_index_joined']
+                if worm_index not in prev_skeleton:
+                    prev_skeleton[worm_index] = np.zeros(0)
+
+
+                if analysis_type == "WORM":
+
+                    worm_mask, worm_cnt, cnt_area = getWormMask(
+                        worm_img, row_data['threshold'], strel_size,
+                        min_mask_area=row_data['area'] / 2, is_light_background = is_light_background)
+
+                    if worm_cnt.size == 0:
+                        continue
+
+                    # get skeletons
+                    skeleton, ske_len, cnt_side1, cnt_side2, cnt_widths, cnt_area = \
+                        getSkeleton(worm_cnt, prev_skeleton[worm_index], resampling_N)
+
+                elif analysis_type == "ZEBRAFISH":
+
+                    # Get zebrafish mask
+                    config = zebrafishAnalysis.ModelConfig(zf_num_segments, zf_min_angle, zf_max_angle, zf_num_angles, zf_tail_length, zf_tail_detection, zf_prune_retention, zf_test_width, zf_draw_width, zf_auto_detect_tail_length)
+                    worm_mask, worm_cnt, cnt_area, cleaned_mask, head_point, smoothed_points = zebrafishAnalysis.getZebrafishMask(worm_img, config)
+
+                    if worm_mask == None:
+                        continue
+
+                    # Get zebrafish skeleton
+                    skeleton, ske_len, cnt_side1, cnt_side2, cnt_widths, cnt_area = zebrafishSkeleton.getZebrafishSkeleton(cleaned_mask, head_point, smoothed_points, config)
+
+                    if skeleton == None:
+                        continue
+
+                    # Resample skeleton and other variables
+                    skeleton, ske_len, cnt_side1, cnt_side2, cnt_widths = resampleAll(skeleton, cnt_side1, cnt_side2, cnt_widths, resampling_N)
+
+                    if skeleton == None or cnt_side1 == None or cnt_side2 == None:
+                        continue
+
 
                 cnt_areas[skeleton_id] = cnt_area
                 # calculate the mask center of mask and store it
@@ -581,14 +630,6 @@ def trajectories2Skeletons(masked_image_file, skeletons_file, trajectories_file,
                 cnt_coord_x[skeleton_id] = np.mean(
                     worm_cnt[:, 0]) + roi_corner[0]
 
-                # get the previous worm skeletons to orient them
-                worm_index = row_data['worm_index_joined']
-                if worm_index not in prev_skeleton:
-                    prev_skeleton[worm_index] = np.zeros(0)
-
-                # get skeletons
-                skeleton, ske_len, cnt_side1, cnt_side2, cnt_widths, cnt_area = \
-                    getSkeleton(worm_cnt, prev_skeleton[worm_index], resampling_N)
 
                 if skeleton.size > 0:
                     prev_skeleton[worm_index] = skeleton.copy()
