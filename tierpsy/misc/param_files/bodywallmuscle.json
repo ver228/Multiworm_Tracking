@@ -1,3 +1,4 @@
 {"analysis_type": "WORM", "expected_fps": 9.0, "compression_buff": 9, "thresh_block_size": 31, "is_light_background": false, "thresh_C": 4, 
 "mask_max_area": 100000, "dilation_size": 20, "strel_size": 15, "worm_bw_thresh_factor": 1.0, "filt_bad_seg_thresh": 0.5, 
-"fps_filter":0, "traj_area_ratio_lim":[0.25,4], "traj_max_allowed_dist": 50, "mask_min_area": 400, "traj_min_area": 200, "min_box_width": 10}
+"fps_filter":0, "traj_area_ratio_lim":[0.25,4], "traj_max_allowed_dist": 50, "mask_min_area": 400, "traj_min_area": 200, "min_box_width": 10,
+"int_avg_width_frac": 0.75, "int_save_maps": false, "max_gap_allowed_block": 3}

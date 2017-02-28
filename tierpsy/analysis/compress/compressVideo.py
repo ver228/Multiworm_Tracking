@@ -9,13 +9,13 @@ import os
 import cv2
 import h5py
 import numpy as np
-from tierpsy.analysis.compress.BackgroundSubtractor import BackgroundSubtractor
-from tierpsy.analysis.compress.extractMetaData import store_meta_data, read_and_save_timestamp
+from MWTracker.analysis.compress.BackgroundSubtractor import BackgroundSubtractor
+from  MWTracker.analysis.compress.extractMetaData import store_meta_data, read_and_save_timestamp
 from scipy.ndimage.filters import median_filter
 
-from  tierpsy.analysis.compress.selectVideoReader import selectVideoReader
-from tierpsy.helper.misc import print_flush
-from tierpsy.helper.timeCounterStr import timeCounterStr
+from  MWTracker.analysis.compress.selectVideoReader import selectVideoReader
+from MWTracker.helper.misc import print_flush
+from MWTracker.helper.timeCounterStr import timeCounterStr
 
 IMG_FILTERS = {"compression":"gzip",
         "compression_opts":4,
@@ -180,8 +180,9 @@ def initMasksGroups(fid, expected_frames, im_height, im_width,
 
     return mask_dataset, full_dataset
 
-def compressVideo(video_file, masked_image_file, mask_param, bgnd_param ={}, buffer_size=-1,
-                  save_full_interval=-1, max_frame=1e32, expected_fps=25):
+def compressVideo(video_file, masked_image_file, mask_param, bgnd_param, buffer_size=-1,
+                  save_full_interval=-1, max_frame=1e32, expected_fps=25,
+                  is_light_background=True):
     '''
     Compresses video by selecting pixels that are likely to have worms on it and making the rest of
     the image zero. By creating a large amount of redundant data, any lossless compression
@@ -198,12 +199,11 @@ def compressVideo(video_file, masked_image_file, mask_param, bgnd_param ={}, buf
      mask_param -- parameters used to calculate the mask
     '''
 
-    if len(bgnd_param) > 0:
-        is_bgnd_subtraction = True
-        assert bgnd_param['buff_size']>0 and bgnd_param['frame_gap']>0
-    else:
-        is_bgnd_subtraction = False
-    
+    if buffer_size < 0:
+        buffer_size = expected_fps
+
+    if save_full_interval < 0:
+        save_full_interval = 200 * expected_fps
 
     # processes identifier.
     base_name = masked_image_file.rpartition('.')[0].rpartition(os.sep)[-1]
@@ -223,9 +223,9 @@ def compressVideo(video_file, masked_image_file, mask_param, bgnd_param ={}, buf
     print_flush(base_name + ' Extracting video metadata...')
     expected_frames = store_meta_data(video_file, masked_image_file)
     
-    if is_bgnd_subtraction:
+    if bgnd_param['is_subtraction']:
         print_flush(base_name + ' Initializing background subtraction.')
-        bgnd_subtractor = BackgroundSubtractor(video_file, **bgnd_param)
+        bgnd_subtractor = BackgroundSubtractor(video_file, bgnd_param['buff_size'], bgnd_param['frame_gap'], mask_param['is_light_background'])
 
     # intialize some variables
     max_intensity, min_intensity = np.nan, np.nan
@@ -323,10 +323,10 @@ def compressVideo(video_file, masked_image_file, mask_param, bgnd_param ={}, buf
                 #TODO this can be done in a more clever way
                 
                 # Subtract background if flag set
-                if is_bgnd_subtraction:
+                if bgnd_param['is_subtraction']:
                     #use the oposite (like that we can avoid an unecessary subtraction)
                     oposite_flag = not mask_param['is_light_background']
-                    Ibuff_b  = bgnd_subtractor.apply(Ibuff, last_frame=frame_number)
+                    Ibuff_b  = bgnd_subtractor.apply(Ibuff)
                     img_reduce = 255 - reduceBuffer(Ibuff_b, oposite_flag)
                 else:
                     #calculate the max/min in the of the buffer

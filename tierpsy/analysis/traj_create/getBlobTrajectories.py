@@ -7,7 +7,6 @@ Created on Thu Apr  2 16:33:34 2015
 
 import os
 from math import sqrt
-import json
 
 import cv2
 import numpy as np
@@ -16,10 +15,9 @@ import pandas as pd
 import skimage.filters as skf
 import skimage.morphology as skm
 
-from tierpsy.analysis.compress.extractMetaData import read_and_save_timestamp
-from tierpsy.helper.timeCounterStr import timeCounterStr
-from tierpsy.helper.misc import TABLE_FILTERS, print_flush
-from tierpsy.analysis.compress.BackgroundSubtractor import BackgroundSubtractor
+from MWTracker.analysis.compress.extractMetaData import read_and_save_timestamp
+from MWTracker.helper.timeCounterStr import timeCounterStr
+from MWTracker.helper.misc import TABLE_FILTERS, print_flush
 
 from functools import partial
 import multiprocessing as mp
@@ -197,80 +195,34 @@ def getBlobDimesions(worm_cnt, ROI_bbox):
     blob_dims = (CMx, CMy, L, W, angle)
     return blob_dims, area, blob_bbox
     
-def generateImages(masked_image_file, frames=[], bgnd_param = {}):
+def generateROIBuff(masked_image_file, buffer_size, blob_params):
     
-    if len(bgnd_param)==0:
-        bgnd_subtractor = None
-    else:
-        bgnd_subtractor = BackgroundSubtractor(masked_image_file, **bgnd_param)
     
     with tables.File(masked_image_file, 'r') as mask_fid:
         mask_dataset = mask_fid.get_node("/mask")
-        
-        if len(frames) == 0:
-            frames = range(mask_dataset.shape[0])
-        
-        for frame_number in frames:
-            image = mask_dataset[frame_number]
+        for frame_number in range(0, mask_dataset.shape[0], buffer_size):
+            # load image buffer
+            ini = frame_number
+            fin = (frame_number+buffer_size)
+            image_buffer = mask_dataset[ini:fin, :, :]
             
-            if bgnd_subtractor is not None:
-                image_b  = bgnd_subtractor.apply(image, last_frame=frame_number)
-                #image_buffer_b = 255 - image_buffer_b
-                image_b[image==0] = 0
-                image = image_b
             
-            yield frame_number, image
-
-def generateROIBuff(masked_image_file, buffer_size, bgnd_param):
-    
-    img_generator = generateImages(masked_image_file, bgnd_param=bgnd_param)
-    
-    with tables.File(masked_image_file, 'r') as mask_fid:
-        tot_frames, im_h, im_w = mask_fid.get_node("/mask").shape
-    
-    for frame_number, image in img_generator:
-        if frame_number % buffer_size == 0:
-            if frame_number + buffer_size > tot_frames:
-                buffer_size = tot_frames-frame_number #change this value, otherwise the buffer will not get full
-            image_buffer = np.zeros((buffer_size, im_h, im_w), np.uint8)
-            ini_frame = frame_number            
-        
-        
-        image_buffer[frame_number-ini_frame] = image
-        
-        #compress if it is the last frame in the buffer
-        if (frame_number+1) % buffer_size == 0 or (frame_number+1 == tot_frames):
             # z projection and select pixels as connected regions that were selected as worms at
             # least once in the masks
             main_mask = np.any(image_buffer, axis=0)
-    
+
             # change from bool to uint since same datatype is required in
             # opencv
             main_mask = main_mask.astype(np.uint8)
-    
+
             #calculate the contours, only keep the external contours (no holes) and 
             _, ROI_cnts, _ = cv2.findContours(main_mask, 
-                                                cv2.RETR_EXTERNAL, 
-                                                cv2.CHAIN_APPROX_NONE)
-    
-            yield ROI_cnts, image_buffer, ini_frame
+                                                      cv2.RETR_EXTERNAL, 
+                                                      cv2.CHAIN_APPROX_NONE)
+
+            yield ROI_cnts, image_buffer, frame_number
             
-def _cnt_to_ROIs(ROI_cnt, image_buffer, min_box_width):
-    #get the corresponding ROI from the contours
-    ROI_bbox = cv2.boundingRect(ROI_cnt)
-    # bounding box too small to be a worm - ROI_bbox[2] and [3] are width and height
-    if ROI_bbox[2] > min_box_width and ROI_bbox[3] > min_box_width:
-        # select ROI for all buffer slides 
-        ini_x = ROI_bbox[1]
-        fin_x = ini_x + ROI_bbox[3]
-        ini_y = ROI_bbox[0]
-        fin_y = ini_y + ROI_bbox[2]
-        ROI_buffer = image_buffer[:, ini_x:fin_x, ini_y:fin_y]
-    else:
-        ROI_buffer = None
-
-    return ROI_buffer, ROI_bbox
-
+           
 
 def getBlobsData(buff_data, blob_params):
     
@@ -283,9 +235,16 @@ def getBlobsData(buff_data, blob_params):
     blobs_data = []
     # examinate each region of interest
     for ROI_cnt in ROI_cnts:
-        #get the corresponding ROI from the contours
-        ROI_buffer, ROI_bbox = _cnt_to_ROIs(ROI_cnt, image_buffer, min_box_width)
-        if ROI_buffer is not None:
+        ROI_bbox = cv2.boundingRect(ROI_cnt)
+        # bounding box too small to be a worm - ROI_bbox[2] and [3] are width and height
+        if ROI_bbox[2] > min_box_width and ROI_bbox[3] > min_box_width:
+            # select ROI for all buffer slides 
+            ini_x = ROI_bbox[1]
+            fin_x = ini_x + ROI_bbox[3]
+            ini_y = ROI_bbox[0]
+            fin_y = ini_y + ROI_bbox[2]
+            ROI_buffer = image_buffer[:, ini_x:fin_x, ini_y:fin_y]
+
             # calculate threshold
             thresh_buff = getBufferThresh(ROI_buffer, worm_bw_thresh_factor, is_light_background, analysis_type)
             
@@ -300,7 +259,7 @@ def getBlobsData(buff_data, blob_params):
                                                         analysis_type, 
                                                         thresh_block_size)
                 current_frame = frame_number + buff_ind
-                
+        
                 for worm_ind, worm_cnt in enumerate(ROI_worms):
                     # ignore contours from holes. This shouldn't occur with the flag RETR_EXTERNAL
                     assert hierarchy[0][worm_ind][3] == -1
@@ -313,8 +272,7 @@ def getBlobsData(buff_data, blob_params):
                         # append data to pytables only if the object is larget than min_area
                         row = (-1, -1, current_frame, *blob_dims, area, *blob_bbox, thresh_buff)
                         blobs_data.append(row)
-    
-                    
+            
     return blobs_data
 
     
@@ -322,7 +280,7 @@ def _get_light_flag(masked_image_file):
     with tables.File(masked_image_file, 'r') as mask_fid:
         mask_dataset = mask_fid.get_node('/', 'mask')
         is_light_background = 1 if not 'is_light_background' in mask_dataset._v_attrs \
-                 else int(mask_dataset._v_attrs['is_light_background'])
+                 else mask_dataset._v_attrs['is_light_background']
     return is_light_background
     
 def _get_fps(masked_image_file):
@@ -343,8 +301,7 @@ def getBlobsTable(masked_image_file,
                     strel_size=(5,5),
                     analysis_type="WORM",
                     thresh_block_size=15,
-                    n_cores_used = 2, 
-                    bgnd_param = {}):
+                    n_cores_used = 2):
 
 
 
@@ -354,15 +311,10 @@ def getBlobsTable(masked_image_file,
     assert len(strel_size) == 2
 
 
-    #read properties
+    #create generators
     is_light_background = _get_light_flag(masked_image_file)
     expected_fps = _get_fps(masked_image_file)
     
-    #find if it is using background subtraction
-    if len(bgnd_param) > 0:
-        bgnd_param['is_light_background'] = is_light_background
-
-
     if buffer_size < 0: #invalid value of buff size, expected_fps instead
         buffer_size = expected_fps
 
@@ -397,32 +349,28 @@ def getBlobsTable(masked_image_file,
         
         
         #find if it is a mask from fluorescence and save it in the new group
+        is_light_background = _get_light_flag(masked_image_file)
         plate_worms._v_attrs['is_light_background'] = is_light_background
+        
+        expected_fps = _get_fps(masked_image_file)
         plate_worms._v_attrs['expected_fps'] = expected_fps
-
-        #make sure it is in a "serializable" format
-        plate_worms._v_attrs['bgnd_param'] = bytes(json.dumps(bgnd_param), 'utf-8')
         
 
         read_and_save_timestamp(masked_image_file, trajectories_file)
-        return plate_worms
+        return plate_worms, is_light_background
     
 
-    
-    buff_generator = generateROIBuff(masked_image_file, buffer_size, bgnd_param)
-    
-
-    #switch the is_light_background flag if we are using background subtraction.
-    #I have it so after background subtraction we have a dark background.
-    is_light_background_b = is_light_background if len(bgnd_param)==0 else not is_light_background
-    
-    blob_params = (is_light_background_b,
+    blob_params = (is_light_background,
                   min_area,
                   min_box_width,
                   worm_bw_thresh_factor,
                   strel_size,
                   analysis_type,
                   thresh_block_size)
+    
+    buff_generator = generateROIBuff(masked_image_file, 
+                      buffer_size,
+                      blob_params)
     
     f_blob_data = partial(getBlobsData, blob_params = blob_params)
     
@@ -439,7 +387,7 @@ def getBlobsTable(masked_image_file,
     
     progressTime = timeCounterStr(progress_str)  
     with tables.open_file(trajectories_file, mode='w') as traj_fid:
-        plate_worms = _ini_plate_worms(traj_fid, masked_image_file)
+        plate_worms, is_light_background = _ini_plate_worms(traj_fid, masked_image_file)
         
         for ibuf, blobs_data in enumerate(blobs_generator):
             if blobs_data:
@@ -482,9 +430,9 @@ if __name__ == '__main__':
         
     
     
-    from tierpsy.analysis.ske_init.processTrajectoryData import processTrajectoryData
-    from tierpsy.helper.tracker_param import tracker_param, default_param
-    from tierpsy.analysis.traj_join.correctTrajectories import correctTrajectories
+    from MWTracker.analysis.ske_init.processTrajectoryData import processTrajectoryData
+    from MWTracker.helper.tracker_param import tracker_param, default_param
+    from MWTracker.analysis.traj_join.correctTrajectories import correctTrajectories
     
     default_param['expected_fps'] = buffer_size
     default_param['traj_area_ratio_lim'] = area_ratio_lim

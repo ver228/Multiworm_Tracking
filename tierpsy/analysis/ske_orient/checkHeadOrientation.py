@@ -12,9 +12,9 @@ import numpy as np
 import pandas as pd
 import tables
 
-from tierpsy.analysis.ske_orient.WormClass import WormClass
-from tierpsy.helper.misc import print_flush
-from tierpsy.helper.timeCounterStr import timeCounterStr
+from MWTracker.analysis.ske_orient.WormClass import WormClass
+from MWTracker.helper.misc import print_flush
+from MWTracker.helper.timeCounterStr import timeCounterStr
 
 
 def getAnglesDelta(dx, dy):
@@ -94,7 +94,7 @@ def isWormHTSwitched(skeletons, segment4angle=5, max_gap_allowed=10,
     '''
     invalid = np.isnan(skeletons[:, 0, 0])
 
-    # get contigous skeletons blocks
+    # get contiguous skeletons blocks
     block_ids, tot_blocks = getBlocksIDs(invalid, max_gap_allowed)
 
     # calculate head and tail angles.
@@ -109,7 +109,7 @@ def isWormHTSwitched(skeletons, segment4angle=5, max_gap_allowed=10,
         min_periods=window_std -
         max_gap_allowed).std()
 
-    # determinte if the head in a skeleton has a larger rolling std than the
+    # determine if the head in a skeleton has a larger rolling std than the
     # tail
     roll_std["is_head"] = (roll_std['head_angle'] > roll_std['tail_angle'])
     roll_std["block_id"] = block_ids
@@ -169,6 +169,7 @@ def correctHeadTail(skeletons_file, max_gap_allowed=10, window_std=25,
             sys.stdout.flush()
 
         worm_index, row_range = dat
+
         worm_data = WormClass(skeletons_file, worm_index,
                               rows_range=(row_range['min'], row_range['max']))
 

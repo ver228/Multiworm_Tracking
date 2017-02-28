@@ -4,8 +4,11 @@ import numpy as np
 import tables
 import os
 
-from tierpsy import AUX_FILES_DIR
-from tierpsy.analysis.ske_create.helperIterROI import generateMoviesROI, getROIFixSize
+from keras.models import load_model
+
+
+from MWTracker import AUX_FILES_DIR
+from MWTracker.analysis.ske_create.helperIterROI import generateMoviesROI, getROIFixSize
 
 def shift_and_normalize(data):
     '''
@@ -49,7 +52,7 @@ def indentifyValidWorms(masked_file,
         frame_subsamplig - number of frames skipped. We do not need to calculate in 
                             every frame. A value of near the number of fps is sensible.
     '''
-    from keras.models import load_model
+    
     model = load_model(model_path)
     roi_size = model.input_shape[2]
     proba_func = partial(getWormProba, roi_size=roi_size, model=model)
@@ -65,8 +68,8 @@ def indentifyValidWorms(masked_file,
     #get generators to get the ROI and calculate the worm probabilities from them
     ROIs_generator = generateMoviesROI(masked_file, 
                                          trajectories_data_rec, 
-                                         roi_size=roi_size,
-                                         progress_prefix=progress_prefix)
+                                         roi_size,
+                                         progress_prefix)
     
     worm_probs_gen = map(proba_func, ROIs_generator)
     

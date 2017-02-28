@@ -15,9 +15,7 @@ def walkAndFindValidFiles(root_dir, pattern_include='*', pattern_exclude=''):
                 '*_skeletons.hdf5',
                 '*_trajectories.hdf5',
                 '*_features.hdf5',
-                '*_feat_ind.hdf5',
-                '*_subsampled.avi'
-                ]
+                '*_feat_ind.hdf5']
     
     if not pattern_exclude:
         pattern_exclude = []
@@ -95,10 +93,10 @@ def getDefaultSequence(action, is_single_worm=False, add_manual_feats=''):
                                         'SKE_CREATE',
                                         'SKE_FILT',
                                         'SKE_ORIENT',
-                                        'STAGE_ALIGMENT',
-                                        'CONTOUR_ORIENT', #orientation must occur before the intensity map calculation.
                                         'INT_PROFILE',
                                         'INT_SKE_ORIENT',
+                                        'STAGE_ALIGMENT',
+                                        'CONTOUR_ORIENT',
                                         'FEAT_CREATE',
                                         'WCON_EXPORT'
                                         ]}
