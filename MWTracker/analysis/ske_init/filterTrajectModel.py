@@ -4,7 +4,7 @@ import numpy as np
 import tables
 import os
 
-from keras.models import load_model
+#from keras.models import load_model
 
 
 from MWTracker import AUX_FILES_DIR
