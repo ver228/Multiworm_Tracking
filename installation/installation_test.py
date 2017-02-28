@@ -12,7 +12,7 @@ import matplotlib
 matplotlib.use("Qt5Agg")
 import matplotlib.pylab as plt
 
-import MWTracker
+import tierpsy
 import open_worm_analysis_toolbox
 
 if __name__ == '__main__':
@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     print(pd.__name__, pd.__version__)
 
-    print(MWTracker.__name__, MWTracker.__version__)
+    print(tierpsy.__name__, tierpsy.__version__)
     print(open_worm_analysis_toolbox.__name__, open_worm_analysis_toolbox.__version__)
 
     if False:

@@ -1,4 +1,0 @@
-{"thresh_block_size": 61, "thresh_C": 15, "dilation_size": 30, "min_area": 100, 
-"resampling_N": 49, "expected_fps": 30.0, "max_area": 100000, "keep_border_data": true, 
-"compression_buff": 1, "max_gap_allowed_block":3, "int_max_gap_allowed_block":0, 
-"worm_bw_thresh_factor":1.10, "strel_size":10, "save_int_maps": true, "filt_min_displacement":0}
