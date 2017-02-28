@@ -2,7 +2,7 @@ import sys
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtCore import Qt
 
-from MWTracker.gui.HDF5VideoPlayer_ui import Ui_HDF5VideoPlayer
+from tierpsy.gui.HDF5VideoPlayer_ui import Ui_HDF5VideoPlayer
 
 import tables
 import os
@@ -188,6 +188,7 @@ class HDF5VideoPlayer_GUI(QtWidgets.QMainWindow):
             self.fid.close()
             self.mainImage.cleanCanvas()
             self.fid = -1
+            self.image_group = -1
 
         self.vfilename = vfilename
         self.ui.lineEdit_video.setText(self.vfilename)
@@ -239,28 +240,30 @@ class HDF5VideoPlayer_GUI(QtWidgets.QMainWindow):
     # read a valid groupset from the hdf5
     def updateImGroup(self):
         if self.fid == -1:
+            self.image_group = -1
             return
 
         #self.h5path = self.ui.comboBox_h5path.text()
         if self.h5path not in self.fid:
             self.mainImage.cleanCanvas()
-            self.image_group == -1
             QtWidgets.QMessageBox.critical(
                 self,
                 'The groupset path does not exist',
                 "The groupset path does not exists. You must specify a valid groupset path",
                 QtWidgets.QMessageBox.Ok)
+            self.image_group == -1
             return
 
         self.image_group = self.fid.get_node(self.h5path)
         if len(self.image_group.shape) != 3:
             self.mainImage.cleanCanvas()
-            self.image_group == -1
             QtWidgets.QMessageBox.critical(
                 self,
                 'Invalid groupset',
                 "Invalid groupset. The groupset must have three dimensions",
                 QtWidgets.QMessageBox.Ok)
+            self.image_group == -1
+            return 
 
         self.tot_frames = self.image_group.shape[0]
         self.image_height = self.image_group.shape[1]

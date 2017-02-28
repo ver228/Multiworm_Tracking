@@ -10,9 +10,9 @@ import cv2
 import h5py
 import numpy as np
 
-from MWTracker.analysis.feat_create.obtainFeatures import getFPS
-from MWTracker.helper.misc import print_flush
-from MWTracker.helper.timeCounterStr import timeCounterStr
+from tierpsy.analysis.feat_create.obtainFeatures import read_fps
+from tierpsy.helper.misc import print_flush
+from tierpsy.helper.timeCounterStr import timeCounterStr
 
 
 def getSubSampleVidName(masked_image_file):

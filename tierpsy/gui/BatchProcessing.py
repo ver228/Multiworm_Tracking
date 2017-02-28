@@ -4,21 +4,21 @@ import json
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox
 from PyQt5.QtCore import Qt
 
-from MWTracker.processing.processMultipleFilesFun import processMultipleFilesFun, getResultsDir
-from MWTracker.processing.batchProcHelperFunc import getDefaultSequence
+from tierpsy.processing.processMultipleFilesFun import processMultipleFilesFun, getResultsDir
+from tierpsy.processing.batchProcHelperFunc import getDefaultSequence
 
-from MWTracker.gui.AnalysisProgress import AnalysisProgress, WorkerFunQt
-from MWTracker.gui.HDF5VideoPlayer import lineEditDragDrop
-from MWTracker.gui.BatchProcessing_ui import Ui_BatchProcessing
+from tierpsy.gui.AnalysisProgress import AnalysisProgress, WorkerFunQt
+from tierpsy.gui.HDF5VideoPlayer import lineEditDragDrop
+from tierpsy.gui.BatchProcessing_ui import Ui_BatchProcessing
 
-from MWTracker.processing.ProcessMultipleFilesParser import CompressMultipleFilesParser, TrackMultipleFilesParser
+from tierpsy.processing.ProcessMultipleFilesParser import CompressMultipleFilesParser, TrackMultipleFilesParser
 DFLT_COMPRESS_VALS = CompressMultipleFilesParser.dflt_vals
 DFLT_TRACK_VALS = TrackMultipleFilesParser.dflt_vals
 
-from MWTracker.helper.tracker_param import tracker_param
+from tierpsy.helper.tracker_param import tracker_param
 
 #get default parameters files
-from MWTracker import DFLT_PARAMS_PATH, DFLT_PARAMS_FILES
+from tierpsy import DFLT_PARAMS_PATH, DFLT_PARAMS_FILES
 
 class BatchProcessing_GUI(QMainWindow):
 

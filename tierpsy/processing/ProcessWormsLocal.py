@@ -10,12 +10,12 @@ import time
 import datetime
 import shutil
 
-from MWTracker.helper.misc import print_flush
-from MWTracker.processing.AnalysisPoints import AnalysisPoints
-from MWTracker.processing.ProcessWormsWorker import ProcessWormsWorkerParser, ProcessWormsWorker, BATCH_SCRIPT_WORKER
-from MWTracker.processing.batchProcHelperFunc import create_script, getRealPathName
-from MWTracker.analysis.compress_add_data.getAdditionalData import getAdditionalFiles
-from MWTracker.helper.tracker_param import tracker_param
+from tierpsy.helper.misc import print_flush
+from tierpsy.processing.AnalysisPoints import AnalysisPoints
+from tierpsy.processing.ProcessWormsWorker import ProcessWormsWorkerParser, ProcessWormsWorker, BATCH_SCRIPT_WORKER
+from tierpsy.processing.batchProcHelperFunc import create_script, getRealPathName
+from tierpsy.analysis.compress_add_data.getAdditionalData import getAdditionalFiles
+from tierpsy.helper.tracker_param import tracker_param
 
 
 #this path is not really going to be used if it is pyinstaller frozen (only the BATCH_SCRIPT_WORKER)
@@ -23,7 +23,8 @@ BATCH_SCRIPT_LOCAL = [sys.executable, os.path.realpath(__file__)]
 
 class ProcessWormsLocal(object):
     def __init__(self, main_file, masks_dir, results_dir, tmp_mask_dir='',
-            tmp_results_dir='', json_file='', analysis_checkpoints = [], is_copy_video = False):
+            tmp_results_dir='', json_file='', analysis_checkpoints = [], 
+            is_copy_video = False, copy_unfinished=False):
         
         self.main_file = os.path.realpath(main_file)
         self.results_dir = os.path.realpath(results_dir)
@@ -45,6 +46,7 @@ class ProcessWormsLocal(object):
         param = tracker_param(json_file)
         self.is_single_worm = param.is_single_worm
         self.is_copy_video = is_copy_video
+        self.copy_unfinished = copy_unfinished
 
         #we have both a mask and a results tmp directory because like that it is easy to asign them to the original if the are empty
         self.tmp_results_dir = tmp_results_dir if tmp_results_dir else results_dir
@@ -174,15 +176,22 @@ class ProcessWormsLocal(object):
         
         #recalcuate the unfinished points in the tmp directory. At this point they should be empty
         self.unfinished_points_tmp = self.ap_tmp.getUnfinishedPoints(self.unfinished_points_src)
-        if len(self.unfinished_points_tmp) != 0:
-            #return, do not copy the files if the tmp analysis was interrupted
+        if len(self.unfinished_points_tmp) != 0 and not self.copy_unfinished:
+        #    #return, do not copy the files if the tmp analysis was interrupted
             return
+
+        
 
         #copy all the files produced by the temp dir into the final destination
         ouput_files_produced = self._points2Files(self.unfinished_points_src, self.ap_tmp, "output_files")
         files2copy = self._getFilesSrcDstPairs(ouput_files_produced, 
                                                self.ap_tmp.file2dir_dict, 
                                                self.ap_src.file2dir_dict)
+
+        if self.copy_unfinished:
+            #filter any missing file
+            files2copy = [x for x in files2copy if os.path.exists(x[0])]
+
         self._copyFilesLocal(files2copy)
 
         self._deleteTmpFiles()
@@ -197,7 +206,7 @@ class ProcessWormsLocal(object):
 
         #check if the analysis was really finished in the src before deleting any files
         self.unfinished_points_src = self.ap_src.getUnfinishedPoints(self.analysis_checkpoints)
-        if len(self.unfinished_points_src) != 0:
+        if len(self.unfinished_points_src) != 0 and not self.copy_unfinished:
             #return, there is something weird with the source, it seems that the tmp files were not copy correctly
             return   
         
@@ -273,6 +282,10 @@ class ProcessWormsLocalParser(ProcessWormsLocal, ProcessWormsWorkerParser):
             '--is_copy_video',
             action='store_true',
             help='The video file would be copied to the temporary directory.')
+        self.add_argument(
+            '--copy_unfinished',
+            action='store_true',
+            help='Copy files from an uncompleted analysis in the temporary directory.')
         
         args = self.parse_args(sys_argv[1:])
         print(args)

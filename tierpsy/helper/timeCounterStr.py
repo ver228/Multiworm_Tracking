@@ -19,7 +19,7 @@ def tictoc():
 
 class timeCounterStr:
 
-    def __init__(self, task_str):
+    def __init__(self, task_str=''):
         self.initial_time = time.time()
         self.last_frame = 0
         self.task_str = task_str

@@ -12,7 +12,7 @@ import subprocess as sp
 import numpy as np
 from queue import Empty
 
-from MWTracker.helper.misc import FFMPEG_CMD, ReadEnqueue
+from tierpsy.helper.misc import FFMPEG_CMD, ReadEnqueue
 
 
 class ReadVideoFFMPEG:

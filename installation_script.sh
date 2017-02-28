@@ -7,12 +7,39 @@ OPENCV_DIR=$MW_MAIN_DIR/../opencv
 OPENCV_VER="3.2.0"
 
 EXAMPLES_LINK="https://imperiallondon-my.sharepoint.com/personal/ajaver_ic_ac_uk/_layouts/15/guestaccess.aspx?guestaccesstoken=ldZ18fLY%2bzlu7XuO9mbKVdyiKoH4naiesqiLXWU4vGQ%3d&docid=0cec4e52f4ccf4d5b8bb3a737020fc12f&rev=1"
-EXAMPLES_DIR="$MW_MAIN_DIR/Tests/Data/"
+EXAMPLES_DIR="$MW_MAIN_DIR/tests/data/"
 
 OS=$(uname -s)
 
 #############
-function install_homebrew_python {
+function osx_dependencies {
+	xcode-select --install
+	#install homebrew and other software used
+	ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+	
+	#make the current user the owner of homebrew otherewise it can cause some problems
+	#sudo chown -R `whoami`:admin /usr/local/bin
+	#sudo chown -R `whoami`:admin /usr/local/share
+	#brew update
+	#brew upgrade
+
+	brew install git
+	
+	#ffmpeg libraries, needed to install opencv
+	brew install ffmpeg --verbose --with-fdk-aac --with-libass --with-libquvi \
+	--with-libvorbis --with-libvpx --with-x265 --with-openh264 --with-tools --with-fdk-aac
+
+	#image libraries for opencv
+	brew install jpeg libpng libtiff openexr eigen tbb
+}
+
+function force_clean_osx {
+	rm -Rf $OPENCV_DIR
+	rm -Rf $OPENWORM_DIR
+	brew uninstall --force cmake python3 git ffmpeg homebrew/science/hdf5 sip pyqt5
+}
+
+function brew_python {
 	if [[ -z `brew ls --versions python3` ]]; then
 		brew install python3
 	fi
@@ -32,11 +59,11 @@ function install_homebrew_python {
 	
 	CURRENT_OPENCV_VER=`python3 -c "import cv2; print(cv2.__version__)" 2> /dev/null || true`
 	if [[ $OPENCV_VER != $CURRENT_OPENCV_VER ]]; then
-		install_opencv3
+		opencv3_cmake
 	fi
 }
 
-function install_opencv3 {
+function opencv3_cmake {
 	if [[ -z `brew ls --versions cmake` ]]; then
 		brew install cmake 
 	fi
@@ -86,14 +113,7 @@ function install_opencv3 {
 	python3 -c "import cv2; print(cv2.__version__)"
 }
 
-function clean_prev_installation_osx {
-	rm -Rf $OPENCV_DIR
-	rm -Rf $OPENWORM_DIR
-	brew uninstall --force cmake python3 git ffmpeg homebrew/science/hdf5 #sip pyqt5
-}
-
-
-function install_dependencies_linux {
+function linux_dependencies {
 	case `lsb_release -si` in
 		"Ubuntu")
 		ubuntu_dependencies
@@ -123,30 +143,45 @@ function redhat_dependencies {
 	libtiff-devel libwebp-devel tbb-devel eigen3-devel
 }
 
-function install_dependencies_osx {
-	xcode-select --install
-	#install homebrew and other software used
-	ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-	
-	#make the current user the owner of homebrew otherewise it can cause some problems
-	#sudo chown -R `whoami`:admin /usr/local/bin
-	#sudo chown -R `whoami`:admin /usr/local/share
-	brew update
-	brew upgrade
-
-	brew install git
-	
-	#ffmpeg libraries, needed to install opencv
-	brew install ffmpeg --verbose --with-fdk-aac --with-libass --with-libquvi \
-	--with-libvorbis --with-libvpx --with-x265 --with-openh264 --with-tools --with-fdk-aac
-
-	#image libraries for opencv
-	brew install jpeg libpng libtiff openexr eigen tbb
+function anaconda_pkgs {
+	echo "Installing get_anaconda extra packages..."
+	conda install -y python=3.5.2 pip
+	conda install -y anaconda-client conda-build numpy matplotlib pytables pandas \
+	h5py scipy scikit-learn scikit-image seaborn xlrd cython statsmodels
+	pip install gitpython pyqt5 keras 
+	conda install -y -c conda-forge tensorflow
 }
 
+function build_opencv3_anaconda {
+	echo "Installing openCV..."
+	conda install -y conda-build
+	conda config --add channels menpo
+	conda build --no-anaconda-upload installation/menpo_conda-opencv3
+	conda install -y --use-local opencv3
+	python3 -c "import cv2; print(cv2.__version__)"
+}
 
+function opencv_anaconda {
+	read -r -p "Would you like to compile openCV? Otherwise I will try to download it. [y/N] " response
+	case "$response" in [yY][eE][sS]|[yY])
+		OPENCV_CUR_VER=`python3 -c "import cv2; print(cv2.__version__)" 2>/dev/null` || true
+		if [[ ! -z "$OPENCV_CUR_VER" ]]; then
+			read -r -p "A previous installation of openCV ($OPENCV_CUR_VER) exists. Do you wish to replace it? [y/N] " response
+			case "$response" in [yY][eE][sS]|[yY]) 
+		    	build_opencv3_anaconda
+		    	;;
+		    esac
+		else
+		    build_opencv3_anaconda
+		fi
+		;;
+		*)
+	    conda install -y --channel https://conda.anaconda.org/ver228 opencv3
+	    ;;
+	esac
+}
 
-function install_anaconda {
+function _anaconda {
 	case "${OS}" in
 		"Darwin")
 		MINICONDA_LINK="https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh"
@@ -173,61 +208,29 @@ function install_anaconda {
     fi
 }
 
-function install_anaconda_pkgs {
-	echo "Installing anaconda extra packages..."
-	conda install -y python=3.5.2 pip
-	conda install -y anaconda-client conda-build numpy matplotlib pytables pandas \
-	h5py scipy scikit-learn scikit-image seaborn xlrd cython statsmodels
-	pip install gitpython pyqt5 keras 
-	conda install -y -c conda-forge tensorflow
-}
-
-function install_opencv3_anaconda {
-	echo "Installing openCV..."
-	conda install -y conda-build
-	conda config --add channels menpo
-	conda build --no-anaconda-upload installation/menpo_conda-opencv3
-	conda install -y --use-local opencv3
-	python3 -c "import cv2; print(cv2.__version__)"
-}
-
-function install_opencv3_anaconda_checked {	
-	OPENCV_CUR_VER=`python3 -c "import cv2; print(cv2.__version__)" 2>/dev/null` || true
-	if [[ ! -z "$OPENCV_CUR_VER" ]]; then
-		read -r -p "A previous installation of openCV ($OPENCV_CUR_VER) exists. Do you wish to replace it? [y/N] " response
-		case "$response" in [yY][eE][sS]|[yY]) 
-        	install_opencv3_anaconda
-        	;;
-        esac
-    else
-        install_opencv3_anaconda
-    fi
-}
-
-function install_anaconda_checked {
+function get_anaconda {
 	if hash conda 2>/dev/null; then
 		CONDA_VER=`conda -V`
-        read -r -p "A previous installation of anaconda ($CONDA_VER) exists. Do you wish to overwrite it? [y/N] " response
+        read -r -p "A previous installation of Anaconda ($CONDA_VER) exists. Do you wish to overwrite it? [y/N] " response
 		case "$response" in [yY][eE][sS]|[yY]) 
-        	install_anaconda
+        	_anaconda
         	;;
         esac
     else
-        install_anaconda
+        _anaconda
     fi
 
-    install_anaconda_pkgs
-    install_opencv3_anaconda_checked
+    anaconda_pkgs
+    opencv_anaconda
 }
 
-function compile_cython_files {
-	cd $MW_MAIN_DIR/MWTracker/analysis/ske_create/segWormPython/cythonFiles/
-	make
-	make clean
+function compile_cython {
 	cd $MW_MAIN_DIR
+	python3 setup.py build_ext --inplace
+	python3 setup.py clean --all
 }
 
-function install_main_modules {
+function setup_modules {
 	git clone https://github.com/openworm/open-worm-analysis-toolbox $OPENWORM_DIR || :
 	cd $OPENWORM_DIR
 	git pull origin HEAD || :
@@ -255,23 +258,64 @@ function download_examples {
 	rm test_data.zip
 }
 
-##########
-case "${OS}" in
-	"Darwin")
-	install_dependencies_osx || :
+function link_desktop {
+	DESKTOLINK="$HOME/Desktop/TierpsyTracker.command"
+	echo "python3 $MW_MAIN_DIR/MWTracker_GUI/MWConsole.py; exit" > $DESKTOLINK
+	chmod 744 $DESKTOLINK
+} 
+
+
+function exec_all {
+	##########
+	case "${OS}" in
+		"Darwin")
+		osx_dependencies || :
+		;;
+		
+		"Linux"*)
+		linux_dependencies || :
+		;;
+	esac
+
+	if [[ $1 == 'brew' ]]; then
+		brew_python
+	else
+		get_anaconda
+	fi
+
+	compile_cython
+	setup_modules
+	download_examples
+	link_desktop
+}
+
+
+case $1 in
+	""|"--all")
+	"exec_all"
 	;;
-	
-	"Linux"*)
-	install_dependencies_linux || :
+	"--compile_cython")
+	compile_cython
+	;;
+	"--setup_modules")
+	setup_modules
+	;;
+	"--download_examples")
+	download_examples
+	;;
+	"--anaconda")
+	get_anaconda
+	;;
+	"--link_desktop")
+	link_desktop
+	;;
+	*)
+	echo "Exiting... Unrecognized argument: $1"
+	exit 1
 	;;
 esac
 
-if [[ $1 == 'brew' ]]; then
-	install_homebrew_python
-else
-	install_anaconda_checked
-fi
 
-compile_cython_files
-install_main_modules
-download_examples
+
+
+

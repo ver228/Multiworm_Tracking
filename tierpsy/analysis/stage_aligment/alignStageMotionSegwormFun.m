@@ -1,5 +1,7 @@
 function alignStageMotionSegwormFun(masked_image_file,skeletons_file)
     %% delete data from previous analysis if any
+    
+    is_prev_frame_diffs = false;
     fid = H5F.open(skeletons_file,'H5F_ACC_RDWR','H5P_DEFAULT');
     if H5L.exists(fid,'/stage_movement','H5P_DEFAULT')
         gid = H5G.open(fid, '/stage_movement');
@@ -13,16 +15,18 @@ function alignStageMotionSegwormFun(masked_image_file,skeletons_file)
         
         if H5L.exists(gid,'frame_diffs','H5P_DEFAULT')
             H5L.delete(gid,'frame_diffs','H5P_DEFAULT');
+            %is_prev_frame_diffs = true;
         end
-        H5L.delete(gid,'/stage_movement','H5P_DEFAULT');
+        H5F.close(fid);
         
+    else
+        %create an empty new group we will uset his group to store the has_finished flag
+        plist = 'H5P_DEFAULT';
+        gid = H5G.create(fid,'/stage_movement',plist,plist,plist);
         
     end
-    %create an empty new group we will uset his group to store the has_finished flag
-    plist = 'H5P_DEFAULT';
-    gid = H5G.create(fid,'/stage_movement',plist,plist,plist);
     H5G.close(gid);
-    H5F.close(fid);
+    
     
     %create a has_finished flag to record the progress of the function
     h5writeatt(skeletons_file, '/stage_movement', 'has_finished', uint8(0))
@@ -85,15 +89,20 @@ function alignStageMotionSegwormFun(masked_image_file,skeletons_file)
     h5writeatt(skeletons_file , '/stage_movement',  'rotation_matrix',  rotation_matrix)
     
     %% calculate the variance of the difference between frames
-    % Ev's code uses the full vectors without dropping frames
-    % 1. video2Diff differentiates a video frame by frame and outputs the
-    % differential variance. We load these frame differences.
-    frame_diffs_d = getFrameDiffVar(masked_image_file)';
     
-    %Save data
-    h5create(skeletons_file, '/stage_movement/frame_diffs', size(frame_diffs_d), 'Datatype', 'double', ...
-        'Chunksize', size(frame_diffs_d), 'Deflate', 5, 'Fletcher32', true, 'Shuffle', true)
-    h5write(skeletons_file, '/stage_movement/frame_diffs', frame_diffs_d);
+    if is_prev_frame_diffs
+        frame_diffs_d = h5read(skeletons_file, '/stage_movement/frame_diffs');
+    else
+        % Ev's code uses the full vectors without dropping frames
+        % 1. video2Diff differentiates a video frame by frame and outputs the
+        % differential variance. We load these frame differences.
+        frame_diffs_d = getFrameDiffVar(masked_image_file)';
+
+        %Save data
+        h5create(skeletons_file, '/stage_movement/frame_diffs', size(frame_diffs_d), 'Datatype', 'double', ...
+            'Chunksize', size(frame_diffs_d), 'Deflate', 5, 'Fletcher32', true, 'Shuffle', true)
+        h5write(skeletons_file, '/stage_movement/frame_diffs', frame_diffs_d);
+    end
     
     %% Read the media times and locations from the log file.
     % (help from segworm findStageMovement)

@@ -9,10 +9,9 @@ Created on Tue Nov 29 21:22:22 2016
 import tables
 import numpy as np
 
-
-from MWTracker.helper.timeCounterStr import timeCounterStr
-from MWTracker.helper.misc import print_flush
-
+from tierpsy.helper.timeCounterStr import timeCounterStr
+from tierpsy.helper.misc import print_flush
+from tierpsy.analysis.traj_create.getBlobTrajectories import generateImages
 
 def getWormROI(img, CMx, CMy, roi_size=128):
     '''
@@ -109,37 +108,36 @@ def generateMoviesROI(masked_file,
                     trajectories_data,
                     roi_size = -1, 
                     progress_prefix = '',
+                    bgnd_param={},
                     progress_refresh_rate_s=20):
 
     if len(trajectories_data) == 0:
         print_flush(progress_prefix + ' No valid data. Exiting.')
         
     else:
+        frames = trajectories_data['frame_number'].unique()
+        img_generator = generateImages(masked_file, frames=frames, bgnd_param=bgnd_param)
+        
         traj_group_by_frame = trajectories_data.groupby('frame_number')
-        
         progress_time = timeCounterStr(progress_prefix)
-        
-        
         with tables.File(masked_file, 'r') as fid:
-
             try:
-                expected_fps = mask_fid.get_node('/', 'mask')._v_attrs['expected_fps']
+                expected_fps = fid.get_node('/', 'mask')._v_attrs['expected_fps']
             except:
                 expected_fps = 25
             progress_refresh_rate = expected_fps*progress_refresh_rate_s
 
 
-            img_data = fid.get_node('/mask')
-            for ii, (current_frame, frame_data) in enumerate(traj_group_by_frame):
-                img = img_data[current_frame]
-                
-                #dictionary where keys are the table row and the values the worms ROIs
-                yield getAllImgROI(img, frame_data, roi_size)
-                
-                if current_frame % progress_refresh_rate == 0:
-                    print_flush(progress_time.getStr(current_frame))
-                
-            print_flush(progress_time.getStr(current_frame))
+        for ii, (current_frame, img) in enumerate(img_generator):
+            frame_data = traj_group_by_frame.get_group(current_frame)
+            
+            #dictionary where keys are the table row and the values the worms ROIs
+            yield getAllImgROI(img, frame_data, roi_size)
+            
+            if current_frame % progress_refresh_rate == 0:
+                print_flush(progress_time.getStr(current_frame))
+            
+        print_flush(progress_time.getStr(current_frame))
 
 def getROIfromInd(masked_file, trajectories_data, frame_number, worm_index):
     good = (trajectories_data['frame_number']==frame_number) & (trajectories_data['worm_index_joined']==worm_index)

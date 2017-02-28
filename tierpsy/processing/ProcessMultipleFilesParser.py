@@ -1,7 +1,7 @@
 import argparse
 import os
 
-from MWTracker.processing.batchProcHelperFunc import getDefaultSequence
+from tierpsy.processing.batchProcHelperFunc import getDefaultSequence
 
 class BaseMultipleFilesParser(argparse.ArgumentParser):
     def __init__(self, description, dflt_vals):
@@ -47,6 +47,17 @@ class BaseMultipleFilesParser(argparse.ArgumentParser):
             '--only_summary',
             action='store_true',
             help='Use this flag if you only want to print a summary of the files in the directory.')
+
+        self.add_argument(
+            '--unmet_requirements',
+            action='store_true',
+            help='Use this flag if you only want to print the unmet requirements in the invalid source files.'
+            )
+
+        self.add_argument(
+            '--copy_unfinished',
+            action='store_true',
+            help='Copy files from an uncompleted analysis in the temporary directory.')
 
 
 class CompressMultipleFilesParser(BaseMultipleFilesParser):

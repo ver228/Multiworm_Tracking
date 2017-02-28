@@ -8,33 +8,36 @@ Created on Mon Aug  8 17:24:27 2016
 import os
 from functools import partial
 
-from MWTracker.analysis.compress.processVideo import processVideo, isGoodVideo
-from MWTracker.analysis.compress_add_data.getAdditionalData import storeAdditionalDataSW, hasAdditionalFiles
-from MWTracker.analysis.vid_subsample.createSampleVideo import createSampleVideo, getSubSampleVidName
+from tierpsy.analysis.compress.processVideo import processVideo, isGoodVideo
+from tierpsy.analysis.compress_add_data.getAdditionalData import storeAdditionalDataSW, hasAdditionalFiles
+from tierpsy.analysis.vid_subsample.createSampleVideo import createSampleVideo, getSubSampleVidName
 
-from MWTracker.analysis.traj_create.getBlobTrajectories import getBlobsTable
-from MWTracker.analysis.traj_join.joinBlobsTrajectories import joinBlobsTrajectories
+from tierpsy.analysis.traj_create.getBlobTrajectories import getBlobsTable
+from tierpsy.analysis.traj_join.joinBlobsTrajectories import joinBlobsTrajectories
 
-from MWTracker.analysis.ske_init.processTrajectoryData import processTrajectoryData
-from MWTracker.analysis.ske_create.getSkeletonsTables import trajectories2Skeletons
-from MWTracker.analysis.ske_filt.getFilteredSkels import getFilteredSkels
-from MWTracker.analysis.ske_orient.checkHeadOrientation import correctHeadTail
+from tierpsy.analysis.ske_init.processTrajectoryData import processTrajectoryData
+from tierpsy.analysis.ske_create.getSkeletonsTables import trajectories2Skeletons
+from tierpsy.analysis.ske_filt.getFilteredSkels import getFilteredSkels
+from tierpsy.analysis.ske_orient.checkHeadOrientation import correctHeadTail
 
-from MWTracker.analysis.blob_feats.getBlobsFeats import getBlobsFeats
+from tierpsy.analysis.blob_feats.getBlobsFeats import getBlobsFeats
 
 
-from MWTracker.analysis.stage_aligment.alignStageMotion import alignStageMotion, isGoodStageAligment
+from tierpsy.analysis.stage_aligment.alignStageMotion import alignStageMotion, isGoodStageAligment
 
-from MWTracker.analysis.int_profile.getIntensityProfile import getIntensityProfile
-from MWTracker.analysis.int_ske_orient.correctHeadTailIntensity import correctHeadTailIntensity
+from tierpsy.analysis.int_profile.getIntensityProfile import getIntensityProfile
+from tierpsy.analysis.int_ske_orient.correctHeadTailIntensity import correctHeadTailIntensity
 
-from MWTracker.analysis.contour_orient.correctVentralDorsal import switchCntSingleWorm, hasExpCntInfo
-from MWTracker.analysis.feat_create.obtainFeatures import getWormFeaturesFilt, hasManualJoin
+from tierpsy.analysis.feat_create.obtainFeatures import getWormFeaturesFilt, hasManualJoin
 
-from MWTracker.analysis.wcon_export.exportWCON import getWCOName, exportWCON
+from tierpsy.analysis.contour_orient.correctVentralDorsal import switchCntSingleWorm, hasExpCntInfo, isGoodVentralOrient
 
-from MWTracker.processing.CheckFinished import CheckFinished
-from MWTracker.helper.tracker_param import tracker_param
+from tierpsy.analysis.wcon_export.exportWCON import getWCOName, exportWCON
+
+from tierpsy.processing.CheckFinished import CheckFinished
+from tierpsy.helper.tracker_param import tracker_param
+
+
 
 
 class AnalysisPoints(object):
@@ -235,6 +238,7 @@ class AnalysisPoints(object):
                 'output_files': [fn['skeletons']],
                 'requirements' : ['COMPRESS_ADD_DATA', 'SKE_CREATE'],
             }
+            
             self.checkpoints['CONTOUR_ORIENT'] = {
                 'func': switchCntSingleWorm,
                 'argkws': {'skeletons_file': fn['skeletons']},
@@ -248,9 +252,14 @@ class AnalysisPoints(object):
                 self.checkpoints[key]['requirements'] += \
             [('has_additional_files', partial(hasAdditionalFiles, fn['original_video']))]
             
+            is_valid_contour = ['CONTOUR_ORIENT', ('is_valid_contour', partial(isGoodVentralOrient, fn['skeletons']))]
+            is_valid_alignment = ['STAGE_ALIGMENT', ('is_valid_alignment', partial(isGoodStageAligment, fn['skeletons']))]
+
             #make sure the stage was aligned correctly
-            self.checkpoints['FEAT_CREATE']['requirements'] += ['STAGE_ALIGMENT']
+            self.checkpoints['FEAT_CREATE']['requirements'] += is_valid_contour + is_valid_alignment
             
+            #the skeleton must be oriented to save a correct map. For this dataset I am expecting to save the profile map.
+            self.checkpoints['INT_PROFILE']['requirements'] += is_valid_contour
             
         
         #add provenance file field if it is not explicity added

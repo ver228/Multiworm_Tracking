@@ -12,8 +12,8 @@ import numpy as np
 import pandas as pd
 import tables
 
-from MWTracker.analysis.ske_orient.checkHeadOrientation import isWormHTSwitched
-from MWTracker.helper.misc import print_flush
+from tierpsy.analysis.ske_orient.checkHeadOrientation import isWormHTSwitched
+from tierpsy.helper.misc import print_flush
 
 
 def getHeadProbMov(
@@ -175,7 +175,7 @@ def checkFinalOrientation(
 
 
 if __name__ == '__main__':
-    from MWTracker.analysis.int_ske_orient.correctHeadTailIntensity import switchBlocks
+    from tierpsy.analysis.int_ske_orient.correctHeadTailIntensity import switchBlocks
 
     check_dir = '/Users/ajaver/Desktop/Videos/single_worm/agar_1/MaskedVideos/'
 

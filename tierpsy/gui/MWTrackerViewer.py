@@ -9,14 +9,14 @@ from PyQt5.QtCore import Qt, QPointF
 from PyQt5.QtGui import QPixmap, QPainter, QFont, QPen, QPolygonF, QColor
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
-from MWTracker.gui.AnalysisProgress import WorkerFunQt, AnalysisProgress
-from MWTracker.gui.MWTrackerViewer_ui import Ui_MWTrackerViewer
-from MWTracker.gui.TrackerViewerAux import TrackerViewerAux_GUI
-from MWTracker.analysis.feat_create.obtainFeatures import getWormFeaturesFilt
-from MWTracker.analysis.ske_create.helperIterROI import getWormROI
-from MWTracker.analysis.ske_filt.getFilteredSkels import getValidIndexes
-from MWTracker.helper.trackProvenance import getGitCommitHash, execThisPoint
-from MWTracker.helper.tracker_param import tracker_param
+from tierpsy.gui.AnalysisProgress import WorkerFunQt, AnalysisProgress
+from tierpsy.gui.MWTrackerViewer_ui import Ui_MWTrackerViewer
+from tierpsy.gui.TrackerViewerAux import TrackerViewerAux_GUI
+from tierpsy.analysis.feat_create.obtainFeatures import getWormFeaturesFilt
+from tierpsy.analysis.ske_create.helperIterROI import getWormROI
+from tierpsy.analysis.ske_filt.getFilteredSkels import getValidIndexes
+from tierpsy.helper.trackProvenance import getGitCommitHash, execThisPoint
+from tierpsy.helper.tracker_param import tracker_param
 
 
 class MWTrackerViewer_GUI(TrackerViewerAux_GUI):

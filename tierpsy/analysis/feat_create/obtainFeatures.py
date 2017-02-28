@@ -12,6 +12,7 @@ from functools import partial
 import numpy as np
 import pandas as pd
 import tables
+import warnings
 
 warnings.filterwarnings('ignore', '.*empty slice*',)
 warnings.filterwarnings('ignore', ".*Falling back to 'gelss' driver.",)
@@ -21,98 +22,17 @@ warnings.simplefilter(action="ignore", category=RuntimeWarning)
 # (http://www.pytables.org/usersguide/parameter_files.html)
 tables.parameters.MAX_COLUMNS = 1024
 
-from MWTracker.helper.timeCounterStr import timeCounterStr
-from MWTracker.helper.misc import print_flush
-from MWTracker.analysis.ske_filt.getFilteredSkels import getValidIndexes
-from MWTracker.analysis.feat_create.obtainFeaturesHelper import WormStatsClass, WormFromTable
-from MWTracker.analysis.contour_orient.correctVentralDorsal import isBadVentralOrient
-from MWTracker.helper.misc import WLAB, TABLE_FILTERS
+from tierpsy.helper.timeCounterStr import timeCounterStr
+from tierpsy.helper.misc import print_flush
+from tierpsy.analysis.ske_filt.getFilteredSkels import getValidIndexes
+from tierpsy.analysis.feat_create.obtainFeaturesHelper import WormStatsClass, _correct_schafer_worm_case, \
+WormFromTable, read_fps, read_microns_per_pixel
+from tierpsy.analysis.contour_orient.correctVentralDorsal import isBadVentralOrient
+from tierpsy.analysis.stage_aligment.alignStageMotion import isGoodStageAligment
+from tierpsy.helper.misc import WLAB, TABLE_FILTERS
 
 import open_worm_analysis_toolbox as mv
 
-def getFPS(skeletons_file, expected_fps, min_allowed_fps=1):
-        # try to infer the fps from the timestamp
-    try:
-        with tables.File(skeletons_file, 'r') as fid:
-            timestamp_time = fid.get_node('/timestamp/time')[:]
-
-            if np.all(np.isnan(timestamp_time)):
-                raise ValueError
-            fps = 1 / np.nanmedian(np.diff(timestamp_time))
-
-            if np.isnan(fps) or fps < 1:
-                raise ValueError
-            is_default_timestamp = 0
-
-    except (tables.exceptions.NoSuchNodeError, IOError, ValueError):
-        fps = expected_fps
-        is_default_timestamp = 1
-
-    return fps, is_default_timestamp
-
-#%%%%%% these function are related with the singleworm case it might be necesary to change them in the future
-
-
-def getMicronsPerPixel(skeletons_file):
-    try:
-        with tables.File(skeletons_file, 'r') as fid:
-            microns_per_pixel_scale = fid.get_node(
-                '/stage_movement')._v_attrs['microns_per_pixel_scale']
-    except (KeyError, tables.exceptions.NoSuchNodeError):
-        return 1
-
-    if microns_per_pixel_scale.size == 2:
-        assert np.abs(
-            microns_per_pixel_scale[0]) == np.abs(
-            microns_per_pixel_scale[1])
-        microns_per_pixel_scale = np.abs(microns_per_pixel_scale[0])
-        return microns_per_pixel_scale
-    else:
-        return 1
-
-
-def correctSingleWorm(worm, skeletons_file):
-    ''' Correct worm positions using the stage vector calculated by alignStageMotionSegwormFun.m'''
-    with tables.File(skeletons_file, 'r') as fid:
-        stage_vec_ori = fid.get_node('/stage_movement/stage_vec')[:]
-        timestamp_ind = fid.get_node('/timestamp/raw')[:].astype(np.int)
-        rotation_matrix = fid.get_node(
-            '/stage_movement')._v_attrs['rotation_matrix']
-        microns_per_pixel_scale = fid.get_node(
-            '/stage_movement')._v_attrs['microns_per_pixel_scale']
-
-    # let's rotate the stage movement
-    dd = np.sign(microns_per_pixel_scale)
-    rotation_matrix_inv = np.dot(
-        rotation_matrix * [(1, -1), (-1, 1)], [(dd[0], 0), (0, dd[1])])
-
-    # adjust the stage_vec to match the timestamps in the skeletons
-    timestamp_ind = timestamp_ind
-    good = (
-        timestamp_ind >= worm.first_frame) & (
-        timestamp_ind <= worm.last_frame)
-
-    ind_ff = timestamp_ind[good] - worm.first_frame
-    stage_vec_ori = stage_vec_ori[good]
-
-    stage_vec = np.full((worm.timestamp.size, 2), np.nan)
-    stage_vec[ind_ff, :] = stage_vec_ori
-
-    
-
-    # the negative symbole is to add the stage vector directly, instead of
-    # substracting it.
-    stage_vec_inv = -np.dot(rotation_matrix_inv, stage_vec.T).T
-
-    for field in ['skeleton', 'ventral_contour', 'dorsal_contour']:
-        if hasattr(worm, field):
-            tmp_dat = getattr(worm, field)
-            # rotate the skeletons
-            # for ii in range(tot_skel):
-        #tmp_dat[ii] = np.dot(rotation_matrix, tmp_dat[ii].T).T
-            tmp_dat = tmp_dat + stage_vec_inv[:, np.newaxis, :]
-            setattr(worm, field, tmp_dat)
-    return worm
 #%%%%%%%
 def _n_percentile(n, q): 
         if isinstance(n, (float, int)) or n.size>0:
@@ -230,25 +150,11 @@ def getGoodTrajIndexes(skeletons_file,
         assert worm_index_str in trajectories_data
         
         #keep only the trajectories that have at least min_num_skel valid skeletons
-        N = trajectories_data.groupby(worm_index_str).agg(
-            {'has_skeleton': np.nansum})
+        N = trajectories_data.groupby(worm_index_str).agg({'has_skeleton': np.nansum})
         N = N[N > feat_filt_param['min_num_skel']].dropna()
         good_traj_index = N.index
     return good_traj_index, worm_index_str
 
-def isValidSingleWorm(skeletons_file, good_traj_index):
-    '''Check if it is sigle worm and if the stage movement has been aligned successfully.'''
-    try:
-        with tables.File(skeletons_file, 'r') as fid:
-            if fid.get_node('/stage_movement')._v_attrs['has_finished'] != 1:
-                # single worm case with a bad flag termination in the stage
-                # movement
-                return False
-            else:
-                assert len(good_traj_index) <= 1
-                return True
-    except (tables.exceptions.NoSuchNodeError, IOError, KeyError):
-        return False
 
 
 def hasManualJoin(skeletons_file):
@@ -276,10 +182,11 @@ def getWormFeaturesFilt(
         table_timeseries = features_fid.create_table(
             '/', 'features_timeseries', header_timeseries, filters=TABLE_FILTERS)
 
+        microns_per_pixel = read_microns_per_pixel(skeletons_file)
+        fps, is_default_timestamp = read_fps(skeletons_file)
         # save some data used in the calculation as attributes
-        table_timeseries._v_attrs['micronsPerPixel'] = micronsPerPixel
-        table_timeseries._v_attrs[
-            'is_default_timestamp'] = is_default_timestamp
+        table_timeseries._v_attrs['micronsPerPixel'] = microns_per_pixel
+        table_timeseries._v_attrs['is_default_timestamp'] = is_default_timestamp
         table_timeseries._v_attrs['fps'] = fps
         table_timeseries._v_attrs['worm_index_str'] = worm_index_str
 
@@ -328,18 +235,26 @@ def getWormFeaturesFilt(
         is_single_worm, 
         feat_filt_param)
     
-    #check if the stage was not aligned correctly. Return empty features file otherwise.
-    if is_single_worm and not isValidSingleWorm(skeletons_file, good_traj_index):
-        good_traj_index = np.array([])
-
-    fps, is_default_timestamp = getFPS(skeletons_file, expected_fps)
-    micronsPerPixel = getMicronsPerPixel(skeletons_file)
-    split_traj_frames = split_traj_time*fps
+    fps, is_default_timestamp = read_fps(skeletons_file, expected_fps)
+    split_traj_frames = int(np.round(split_traj_time*fps)) #the fps could be non integer
     
     # function to calculate the progress time. Useful to display progress
     base_name = skeletons_file.rpartition('.')[0].rpartition(os.sep)[-1].rpartition('_')[0]
     
     with tables.File(features_file, 'w') as features_fid:
+        #check if the stage was not aligned correctly. Return empty features file otherwise.
+        if is_single_worm:
+            with tables.File(skeletons_file, 'r') as skel_fid:
+                if '/experiment_info' in skel_fid:
+                    dd = skel_fid.get_node('/experiment_info').read()
+                    features_fid.create_array(
+                        '/', 'experiment_info', obj=dd)
+                    
+                if isBadVentralOrient(skeletons_file):
+                    warnings.warn('{} Bad or unknown contour orientation. Skiping worm index {}'.format(base_name, worm_index))
+
+                assert isGoodStageAligment(skeletons_file)
+
 
         #total number of worms
         tot_worms = len(good_traj_index)
@@ -363,29 +278,17 @@ def getWormFeaturesFilt(
         for ind_N, worm_index in enumerate(good_traj_index):
             # initialize worm object, and extract data from skeletons file
             worm = WormFromTable(
-                skeletons_file,
-                worm_index,
-                use_skel_filter=use_skel_filter,
-                worm_index_str=worm_index_str,
-                micronsPerPixel=micronsPerPixel,
-                fps=fps,
-                smooth_window=5)
-            
-            #corrections for the case of single worm
+            skeletons_file,
+            worm_index,
+            use_skel_filter=use_skel_filter,
+            worm_index_str=worm_index_str,
+            smooth_window=5)
             if is_single_worm:
-                #add experiment_info into the features file  
-                with tables.File(skeletons_file, 'r') as skel_fid:
-                    if '/experiment_info' in skel_fid:
-                        dd = skel_fid.get_node('/experiment_info').read()
-                        features_fid.create_array(
-                            '/', 'experiment_info', obj=dd)
-                        assert not isBadVentralOrient(skeletons_file)
-
-                assert worm_index == 1 and ind_N == 0
-                worm = correctSingleWorm(worm, skeletons_file)
+                #worm with the stage correction applied
+                worm = _correct_schafer_worm_case(worm)
                 if np.all(np.isnan(worm.skeleton[:, 0, 0])):
+                    print('{} Not valid skeletons found fater stage correction. Skiping worm index {}'.format(base_name, worm_index))
                     return
-
             # calculate features
             timeseries_data, events_data, worm_stats, worm_coords= \
                 getOpenWormData(worm, wStats)
@@ -393,6 +296,7 @@ def getWormFeaturesFilt(
             #get splitted features
             splitted_worms = [x for x in worm.splitWormTraj(split_traj_frames) 
             if x.n_valid_skel > feat_filt_param['min_num_skel']]
+            
             dd = [getFeatStats(x, wStats)[1] for x in splitted_worms]
             splitted_feats = {stat:[x[stat] for x in dd] for stat in FUNC_FOR_DIV}
 
@@ -434,30 +338,62 @@ def getWormFeaturesFilt(
             #%%
             # report progress
             _displayProgress(ind_N + 1)
-            
-        
         # create and save a table containing the averaged worm feature for each
         # worm
+       
         f_node = features_fid.create_group('/', 'features_summary')
-        for stat in FUNC_FOR_DIV:
+        for stat, stats_df in stats_features_df.items():
+            splitted_feats = all_splitted_feats[stat]
+
+            #check that the array is not empty
+            if len(splitted_feats) > 0:
+                splitted_feats_arr = np.array(splitted_feats)
+            else:
+                #return a row full of nan to indicate a fail
+                splitted_feats_arr = np.full(1, np.nan, dtype=wStats.feat_avg_dtype)
+
             features_fid.create_table(
-                f_node, stat, obj = stats_features_df[stat], filters = TABLE_FILTERS)
+                f_node, 
+                stat, 
+                obj = stats_df, 
+                filters = TABLE_FILTERS
+                )
             
             feat_stat_split = features_fid.create_table(
-                f_node, stat + '_split', obj=np.array(all_splitted_feats[stat]), filters=TABLE_FILTERS)
+                f_node, 
+                stat + '_split', 
+                obj=splitted_feats_arr, 
+                filters=TABLE_FILTERS
+                )
             feat_stat_split._v_attrs['split_traj_frames'] = split_traj_frames
         
-        #FUTURE: I am duplicating this field for backward compatibility, I should remove it later on.
-        features_fid.create_table('/', 'features_means', obj = stats_features_df['means'], filters = TABLE_FILTERS)
-        feat_stat_split = features_fid.create_table('/', 'features_means_split', obj=np.array(all_splitted_feats['means']), filters=TABLE_FILTERS)
+            
+
+            if stat == 'means':
+                #FUTURE: I am duplicating this field for backward compatibility, I should remove it later on.
+                features_fid.create_table(
+                    '/', 
+                    'features_means', 
+                    obj = stats_df, 
+                    filters = TABLE_FILTERS
+                    )
+                
+                features_fid.create_table(
+                    '/', 
+                    'features_means_split', 
+                    obj=splitted_feats_arr, 
+                    filters=TABLE_FILTERS
+                    )
         
-        print_flush(
-            base_name +
-            ' Feature extraction finished: ' +
-            progress_timer.getTimeStr())
+        
+    print_flush(
+        base_name +
+        ' Feature extraction finished: ' +
+        progress_timer.getTimeStr())
+
 #%%
 if __name__ == '__main__':
-    from MWTracker.helper.tracker_param import tracker_param
+    from tierpsy.helper.tracker_param import tracker_param
     skeletons_file = '/Users/ajaver/Tmp/Results/FirstRun_181016/HW_N1_Set2_Pos6_Ch1_18102016_140043_skeletons.hdf5'
     features_file = skeletons_file.replace('_skeletons.hdf5', '_features.hdf5')
     
@@ -474,8 +410,6 @@ if __name__ == '__main__':
         is_single_worm, 
         param.feat_filt_param)
     
-    micronsPerPixel = getMicronsPerPixel(skeletons_file)
-    fps, is_default_timestamp = getFPS(skeletons_file, expected_fps)
     
     worm_index = good_traj_index[0]
     worm = WormFromTable(
@@ -483,8 +417,6 @@ if __name__ == '__main__':
                 worm_index,
                 use_skel_filter=use_skel_filter,
                 worm_index_str=worm_index_str,
-                micronsPerPixel=micronsPerPixel,
-                fps=fps,
                 smooth_window=5)
     
     split_traj_frames = 300*fps

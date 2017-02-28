@@ -5,7 +5,7 @@ Created on Sun May 24 19:25:04 2015
 @author: ajaver
 """
 import numpy as np
-from .cythonFiles.linearSkeleton_cython import chainCodeLength2Index, circOpposingNearestPoints, \
+from .cython_files.linearSkeleton_cython import chainCodeLength2Index, circOpposingNearestPoints, \
     getHeadTailRegion, getInterBendSeeds, skeletonize, cleanSkeleton
 
 

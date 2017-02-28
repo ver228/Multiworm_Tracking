@@ -12,7 +12,8 @@ import os
 import time
 import subprocess as sp
 from io import StringIO
-from MWTracker.helper.misc import ReadEnqueue
+from tierpsy.helper.misc import ReadEnqueue
+from tierpsy.helper.timeCounterStr import timeCounterStr
 
 GUI_CLEAR_SIGNAL = '+++++++++++++++++++++++++++++++++++++++++++++++++'
 
@@ -89,6 +90,9 @@ class start_process():
 
 def runMultiCMD(cmd_list, local_obj='', max_num_process=3, refresh_time=10):
     '''Start different process using the command is cmd_list'''
+    
+    total_timer = timeCounterStr() #timer to meassure the total time 
+
     cmd_list = cmd_list[::-1]  # since I am using pop to get the next element i need to invert the list to get athe same order
     tot_tasks = len(cmd_list)
     if tot_tasks < max_num_process:
@@ -153,9 +157,16 @@ def runMultiCMD(cmd_list, local_obj='', max_num_process=3, refresh_time=10):
                 
         #start the new loop
         current_tasks = next_tasks
+
+
+        #display progress
+        n_finished = len(finished_tasks)
+        n_remaining = len(current_tasks) + len(cmd_list)
+        progress_str = 'Tasks: {} finished, {} remaining. Total_time {}.'.format(
+            n_finished, n_remaining, total_timer.getTimeStr())
+        
         print('*************************************************')
-        print('Tasks: %i finished, %i remaining.' %
-              (len(finished_tasks), len(current_tasks) + len(cmd_list)))
+        print(progress_str)
         print('*************************************************')
 
 

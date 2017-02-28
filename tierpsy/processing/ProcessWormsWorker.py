@@ -9,10 +9,10 @@ import time
 import datetime
 import argparse
 
-from MWTracker.helper.misc import print_flush
-from MWTracker.helper.trackProvenance import getGitCommitHash, execThisPoint
-from MWTracker.processing.AnalysisPoints import AnalysisPoints
-from MWTracker.processing.batchProcHelperFunc import getRealPathName
+from tierpsy.helper.misc import print_flush
+from tierpsy.helper.trackProvenance import getGitCommitHash, execThisPoint
+from tierpsy.processing.AnalysisPoints import AnalysisPoints
+from tierpsy.processing.batchProcHelperFunc import getRealPathName
 
 BATCH_SCRIPT_WORKER = getRealPathName(__file__)
 

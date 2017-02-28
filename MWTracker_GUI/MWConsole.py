@@ -1,7 +1,7 @@
 import os
 import sys
 
-from MWTracker.gui.SelectApp import SelectApp
+from tierpsy.gui.SelectApp import SelectApp
 from PyQt5.QtWidgets import QApplication
 
 if __name__ == '__main__':

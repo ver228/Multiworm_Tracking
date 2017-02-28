@@ -12,9 +12,9 @@ import pandas as pd
 import tables
 from scipy.ndimage.filters import median_filter, minimum_filter, maximum_filter
 
-from MWTracker.analysis.int_ske_orient.checkFinalOrientation import checkFinalOrientation
-from MWTracker.helper.misc import print_flush
-from MWTracker.helper.timeCounterStr import timeCounterStr
+from tierpsy.analysis.int_ske_orient.checkFinalOrientation import checkFinalOrientation
+from tierpsy.helper.misc import print_flush
+from tierpsy.helper.timeCounterStr import timeCounterStr
 
 
 def medabsdev(x): return np.median(np.abs(np.median(x) - x))

@@ -6,16 +6,18 @@ Created on Tue Jun  9 15:12:48 2015
 """
 
 import os
-from MWTracker.helper.timeCounterStr import timeCounterStr
-from MWTracker.processing.batchProcHelperFunc import create_script
-from MWTracker.processing.ProcessWormsLocal import BATCH_SCRIPT_LOCAL
-from MWTracker.processing.AnalysisPoints import AnalysisPoints
+import multiprocessing as mp
+
+from tierpsy.helper.timeCounterStr import timeCounterStr
+from tierpsy.processing.batchProcHelperFunc import create_script
+from tierpsy.processing.ProcessWormsLocal import BATCH_SCRIPT_LOCAL
+from tierpsy.processing.AnalysisPoints import AnalysisPoints
 
 class CheckFilesForProcessing(object):
     def __init__(self, video_dir_root, mask_dir_root, 
                  results_dir_root, tmp_dir_root='', 
                  json_file='', analysis_checkpoints = [],
-                  is_copy_video = True):
+                  is_copy_video = True, copy_unfinished=True):
         
         def _testFileExists(fname, type_str):
             if fname:
@@ -40,6 +42,7 @@ class CheckFilesForProcessing(object):
         self.tmp_dir_root = _makeDirIfNotExists(tmp_dir_root)
 
         self.is_copy_video = is_copy_video
+        self.copy_unfinished = copy_unfinished
 
         self.analysis_checkpoints = analysis_checkpoints
         self.filtered_files = {}
@@ -59,20 +62,23 @@ class CheckFilesForProcessing(object):
         
         unfinished_points = ap_obj.getUnfinishedPoints(self.analysis_checkpoints)
         
+
         if len(unfinished_points) == 0:
             msg = 'FINISHED_GOOD'
-        elif unfinished_points != self.analysis_checkpoints:
-            msg =  'FINISHED_BAD'
-        elif self.analysis_checkpoints:
-            unmet_requirements = ap_obj.hasRequirements(self.analysis_checkpoints[0])
-            if len(unmet_requirements) == 0:
-                msg = 'SOURCE_GOOD'
-            else:
+        else:
+            
+            unmet_requirements = ap_obj.hasRequirements(unfinished_points[0])
+            if len(unmet_requirements) > 0:
                 msg ='SOURCE_BAD'
                 #print(self.analysis_checkpoints[0], unmet_requirements)
                 #print(ap_obj.file_names['masked_image'])
-        else:
-            msg = 'EMPTY_ANALYSIS_LIST'
+            elif unfinished_points != self.analysis_checkpoints:
+                msg =  'FINISHED_BAD'
+            else:
+                msg = 'SOURCE_GOOD'
+
+        #else:
+        #    msg = 'EMPTY_ANALYSIS_LIST'
         
         return msg, ap_obj, unfinished_points
     
@@ -92,7 +98,57 @@ class CheckFilesForProcessing(object):
         return subdir_path
     
 
+    @property
+    def summary_msg(self):
+        msg_pairs = [
+        ('SOURCE_GOOD', 'Unprocessed files.'),
+        ('FINISHED_BAD', 'Files whose analysis is incompleted.'),
+        ('SOURCE_BAD', 'Invalid source files.'), 
+        ('FINISHED_GOOD', 'Files that were succesfully finished.')
+        ]
+
+        def _vals2str(val, msg):
+            return '{}\t{}'.format(val, msg)
+
+        msd_dat = [ _vals2str(len(self.filtered_files[key]), msg) for key, msg in msg_pairs]
+        tot_proc_files = len(self.filtered_files['SOURCE_GOOD']) + len(self.filtered_files['FINISHED_BAD'])
+        
+        BREAK_L = '*********************************************' #use the list as below, otherwise it does weird copies of the list
+
+        s_msg = [BREAK_L]
+        s_msg += ['Analysis Summary']
+        s_msg += [BREAK_L]
+        s_msg += msd_dat
+        s_msg += [BREAK_L]
+        s_msg += [_vals2str(tot_proc_files, 'Total files to be processed.')]
+        s_msg += [BREAK_L]
+        
+       
+        s_msg = '\n'.join(s_msg)
+
+
+        return s_msg
+
+
     def filterFiles(self, valid_files):
+        # for ii, video_file in enumerate(valid_files):
+        #     label, ap_obj, unfinished_points = self._checkIndFile(video_file)
+        #     self.filtered_files[label].append((ap_obj, unfinished_points))
+            
+        #     if (ii % 10) == 0:
+        progress_timer = timeCounterStr('')
+        n_batch = mp.cpu_count()
+        p = mp.Pool(n_batch)   
+        all_points = []
+        tot_files = len(valid_files)
+        for ii in range(0, tot_files, n_batch):
+            dat = valid_files[ii:ii + n_batch]
+            res = list(p.map(self._checkIndFile, dat))
+            all_points.append(res)
+            print('Checking file {} of {}. Total time: {}'.format(ii + n_batch, 
+                      tot_files, progress_timer.getTimeStr()))
+        all_points = sum(all_points, []) #flatten
+        
         # intialize filtered files lists
         filtered_files_fields = (
             'SOURCE_GOOD',
@@ -101,26 +157,12 @@ class CheckFilesForProcessing(object):
             'FINISHED_BAD',
             'EMPTY_ANALYSIS_LIST')
         self.filtered_files = {key: [] for key in filtered_files_fields}
-        
-        progress_timer = timeCounterStr('')
-        for ii, video_file in enumerate(valid_files):
-            label, ap_obj, unfinished_points = self._checkIndFile(video_file)
+        for label, ap_obj, unfinished_points in all_points:
             self.filtered_files[label].append((ap_obj, unfinished_points))
-            
-            if (ii % 10) == 0:
-                print('Checking file {} of {}. Total time: {}'.format(ii + 1, 
-                      len(valid_files), progress_timer.getTimeStr()))
 
+        
         print('''Finished to check files.\nTotal time elapsed {}\n'''.format(progress_timer.getTimeStr()))
-        msg = '''Files to be processed :  {}
-Invalid source files  :  {}
-Files that were succesfully finished: {}
-Files whose analysis is incompleted : {}'''.format(
-                len(self.filtered_files['SOURCE_GOOD']),
-                len(self.filtered_files['SOURCE_BAD']),
-                len(self.filtered_files['FINISHED_GOOD']),
-                len(self.filtered_files['FINISHED_BAD']))
-        print(msg)
+        print(self.summary_msg)
         
         return self.getCMDlist()
     
@@ -129,15 +171,19 @@ Files whose analysis is incompleted : {}'''.format(
             ap_obj, unfinished_points = input_data
             for requirement in ap_obj.unmet_requirements:
                 if requirement in ap_obj.checkpoints:
-                    provenance_file = ap_obj.checkpoints[requirement]['provenance_file']
-                    requirement = '{} : {}'.format(requirement, provenance_file)
+                    fname = ap_obj.checkpoints[requirement]['provenance_file']
+                else:
+                    requirement = '{} : {}'.format(requirement, ap_obj.file_names['original_video'])
+
+
                 return requirement
 
-        print(self.filtered_files['SOURCE_BAD'])
-        dd = map(_get_unmet_requirements, self.filtered_files['SOURCE_BAD'])
-        dd ='\n'.join(dd)
-        print(dd)
-        return dd
+        #print(self.filtered_files['SOURCE_BAD'])
+        msg_l = map(_get_unmet_requirements, self.filtered_files['SOURCE_BAD'])
+        msg ='\n'.join(msg_l)
+        
+        print(msg)
+        return msg
 
 
     def getCMDlist(self):
@@ -165,7 +211,8 @@ Files whose analysis is incompleted : {}'''.format(
                   'tmp_results_dir':tmp_results_dir,
                   'json_file':self.json_file, 
                   'analysis_checkpoints': unfinished_points,#self.analysis_checkpoints,
-                  'is_copy_video':self.is_copy_video}
+                  'is_copy_video':self.is_copy_video,
+                  'copy_unfinished':self.copy_unfinished}
         
         cmd = create_script(BATCH_SCRIPT_LOCAL, args, argkws)
         return cmd

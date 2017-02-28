@@ -1,4 +1,4 @@
-# Multiworm_Tracking
+# Tierpsy Tracker
 
 This repository contains my work on the multiworm tracker for the [MRC-CSC](http://csc.mrc.ac.uk/) [Behavioral Genomics Group](http://behave.csc.mrc.ac.uk/).
 

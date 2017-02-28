@@ -6,12 +6,12 @@ Created on Tue Aug  9 00:26:10 2016
 """
 import os
 
-from MWTracker.helper.tracker_param import tracker_param
-from MWTracker.helper.runMultiCMD import runMultiCMD, print_cmd_list
+from tierpsy.helper.tracker_param import tracker_param
+from tierpsy.helper.runMultiCMD import runMultiCMD, print_cmd_list
 
-from MWTracker.processing.ProcessWormsLocal import ProcessWormsLocalParser
-from MWTracker.processing.batchProcHelperFunc import getDefaultSequence, walkAndFindValidFiles
-from MWTracker.processing.CheckFilesForProcessing import CheckFilesForProcessing
+from tierpsy.processing.ProcessWormsLocal import ProcessWormsLocalParser
+from tierpsy.processing.batchProcHelperFunc import getDefaultSequence, walkAndFindValidFiles
+from tierpsy.processing.CheckFilesForProcessing import CheckFilesForProcessing
 
 def processMultipleFilesFun(
         video_dir_root,
@@ -30,7 +30,9 @@ def processMultipleFilesFun(
         end_point='',
         use_manual_join=False,
         is_copy_video=False,
-        analysis_checkpoints=[]):
+        analysis_checkpoints=[],
+        unmet_requirements = False,
+        copy_unfinished = False):
 
     # calculate the results_dir_root from the mask_dir_root if it was not given
     if not results_dir_root:
@@ -62,7 +64,8 @@ def processMultipleFilesFun(
                   'tmp_dir_root' : tmp_dir_root,
                   'json_file' : json_file,
                   'analysis_checkpoints': analysis_checkpoints,
-                  'is_copy_video': is_copy_video}
+                  'is_copy_video': is_copy_video,
+                  'copy_unfinished': copy_unfinished}
     
     #get the list of valid videos
     if not videos_list:
@@ -70,12 +73,15 @@ def processMultipleFilesFun(
     else:
         with open(videos_list, 'r') as fid:
             valid_files = fid.read().split('\n')
-            valid_files = [os.path.realpath(x) for x in valid_files]
-    
+            #valid_files = [os.path.realpath(x) for x in valid_files]
+            
+    print(len(valid_files))
     files_checker = CheckFilesForProcessing(**check_args)
 
     cmd_list = files_checker.filterFiles(valid_files)
-    #files_checker._printUnmetReq()
+    
+    if unmet_requirements:
+        files_checker._printUnmetReq()
     
     if not only_summary:
         # run all the commands

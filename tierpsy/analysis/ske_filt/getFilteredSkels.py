@@ -8,25 +8,19 @@ Created on Fri Dec 11 23:39:22 2015
 import pandas as pd
 import tables
 import numpy as np
-import matplotlib.pylab as plt
-import time
-import glob
-import warnings
 import os
 
-
-from MWTracker.helper.timeCounterStr import timeCounterStr
-from MWTracker.helper.misc import print_flush
-
-from sklearn.covariance import EllipticEnvelope, MinCovDet
+from sklearn.covariance import MinCovDet
 from scipy.stats import chi2
-from MWTracker.helper.misc import TABLE_FILTERS
+from tierpsy.helper.misc import TABLE_FILTERS
 
 #supress unnecessary warnings
 import warnings
 warnings.filterwarnings('ignore', '.*det > previous_det*',)
 np.seterr(invalid='ignore')
 
+from tierpsy.helper.timeCounterStr import timeCounterStr
+from tierpsy.helper.misc import print_flush
 
 
 

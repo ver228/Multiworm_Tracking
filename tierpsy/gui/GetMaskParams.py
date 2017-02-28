@@ -4,21 +4,21 @@ from functools import partial
 
 import cv2
 import numpy as np
-from MWTracker.analysis.compress.compressVideo import getROIMask, selectVideoReader, reduceBuffer
+from tierpsy.analysis.compress.compressVideo import getROIMask, selectVideoReader, reduceBuffer
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QImage
 from PyQt5.QtWidgets import QApplication, QMainWindow, \
 QFileDialog, QMessageBox, QCheckBox, QButtonGroup, QLabel
 
-from MWTracker.gui.AnalysisProgress import WorkerFunQt, AnalysisProgress
-from MWTracker.gui.GetAllParameters import GetAllParameters, save_params_json
-from MWTracker.gui.GetMaskParams_ui import Ui_GetMaskParams
-from MWTracker.gui.HDF5VideoPlayer import lineEditDragDrop, ViewsWithZoom, setChildrenFocusPolicy
+from tierpsy.gui.AnalysisProgress import WorkerFunQt, AnalysisProgress
+from tierpsy.gui.GetAllParameters import GetAllParameters, save_params_json
+from tierpsy.gui.GetMaskParams_ui import Ui_GetMaskParams
+from tierpsy.gui.HDF5VideoPlayer import lineEditDragDrop, ViewsWithZoom, setChildrenFocusPolicy
 
-from MWTracker.analysis.compress.BackgroundSubtractor import BackgroundSubtractor
-from MWTracker.processing.ProcessWormsWorker import ProcessWormsWorker
-from MWTracker.processing.batchProcHelperFunc import getDefaultSequence
-from MWTracker.helper.tracker_param import tracker_param
+from tierpsy.analysis.compress.BackgroundSubtractor import BackgroundSubtractor
+from tierpsy.processing.ProcessWormsWorker import ProcessWormsWorker
+from tierpsy.processing.batchProcHelperFunc import getDefaultSequence
+from tierpsy.helper.tracker_param import tracker_param
 
 
 class GetMaskParams_GUI(QMainWindow):

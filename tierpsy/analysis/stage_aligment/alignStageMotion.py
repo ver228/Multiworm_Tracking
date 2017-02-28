@@ -10,7 +10,7 @@ import tables
 import subprocess as sp
 import tempfile
 
-from MWTracker.helper.misc import print_flush
+from tierpsy.helper.misc import print_flush
 
 
 def alignStageMotion(
@@ -25,21 +25,21 @@ def alignStageMotion(
 
     base_name = os.path.split(masked_image_file)[1].partition('.hdf5')[0]
     # check if it was finished before
-    with tables.File(skeletons_file, 'r+') as fid:
-        try:
-            has_finished = fid.get_node('/stage_movement')._v_attrs['has_finished'][:]
-        except (KeyError, IndexError, tables.exceptions.NoSuchNodeError):
-            has_finished = 0
-    if has_finished > 0:
-        print_flush('%s The stage motion was previously aligned.' % base_name)
-        return
+    # with tables.File(skeletons_file, 'r+') as fid:
+    #     try:
+    #         has_finished = fid.get_node('/stage_movement')._v_attrs['has_finished'][:]
+    #     except (KeyError, IndexError, tables.exceptions.NoSuchNodeError):
+    #         has_finished = 0
+    # if has_finished > 0:
+    #     print_flush('%s The stage motion was previously aligned.' % base_name)
+    #     return
 
     # get the current to add as a matlab path
     current_dir = os.path.dirname(os.path.abspath(__file__))
     start_cmd = ('matlab -nojvm -nosplash -nodisplay -nodesktop <').split()
 
-    script_cmd = "addpath('{0}'); " \
-        "try, alignStageMotionSegwormFun('{1}', '{2}'); " \
+    script_cmd = "addpath('{}'); " \
+        "try, alignStageMotionSegwormFun('{}', '{}'); " \
         "catch ME, disp(getReport(ME)); " \
         "end; exit; "
 

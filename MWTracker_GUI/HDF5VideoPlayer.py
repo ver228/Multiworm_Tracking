@@ -2,7 +2,7 @@ import os
 import sys
 
 
-from MWTracker.gui.HDF5VideoPlayer import HDF5VideoPlayer_GUI
+from tierpsy.gui.HDF5VideoPlayer import HDF5VideoPlayer_GUI
 from PyQt5.QtWidgets import QApplication
 
 if __name__ == '__main__':

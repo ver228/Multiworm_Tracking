@@ -10,11 +10,11 @@ import os
 
 import h5py
 import tables
-from MWTracker.analysis.compress.compressVideo import compressVideo, initMasksGroups
+from tierpsy.analysis.compress.compressVideo import compressVideo, initMasksGroups
 
-from  MWTracker.analysis.compress.selectVideoReader import selectVideoReader
-from MWTracker.helper.misc import print_flush
-from MWTracker.helper.timeCounterStr import timeCounterStr
+from  tierpsy.analysis.compress.selectVideoReader import selectVideoReader
+from tierpsy.helper.misc import print_flush
+from tierpsy.helper.timeCounterStr import timeCounterStr
 
 #default parameters if wormencoder.ini does not exist
 DFLT_SAVE_FULL_INTERVAL = 5000
@@ -156,7 +156,7 @@ if __name__ == '__main__':
     import argparse
     
     fname_wenconder = os.path.join(os.path.dirname(__file__), 'wormencoder.ini')
-    parser = argparse.ArgumentParser(description='Reformat the files produced by the Gecko plugin in to the format of MWTracker.')
+    parser = argparse.ArgumentParser(description='Reformat the files produced by the Gecko plugin in to the format of tierpsy.')
     parser.add_argument('original_file', help='path of the original file produced by the plugin')
     parser.add_argument('new_file', help='new file name')
     parser.add_argument(

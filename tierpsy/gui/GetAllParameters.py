@@ -7,8 +7,8 @@ from PyQt5.QtWidgets import QDialog, QApplication, QGridLayout, QLabel, \
     QMessageBox, QSpacerItem, QFileDialog
 from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot
 
-from MWTracker.helper.tracker_param import tracker_param, param_help, dflt_param_list
-from MWTracker.gui.HDF5VideoPlayer import lineEditDragDrop
+from tierpsy.helper.tracker_param import tracker_param, param_help, dflt_param_list
+from tierpsy.gui.HDF5VideoPlayer import lineEditDragDrop
 
 
 def save_params_json(json_file, param4file):

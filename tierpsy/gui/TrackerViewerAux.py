@@ -9,10 +9,10 @@ from PyQt5.QtCore import QPointF, Qt
 from PyQt5.QtGui import QPixmap, QImage, QPolygonF, QPen, QPainter, QColor
 from PyQt5.QtWidgets import QApplication, QFileDialog
 
-from MWTracker.gui.HDF5VideoPlayer import HDF5VideoPlayer_GUI, lineEditDragDrop
-from MWTracker.gui.TrackerViewerAux_ui import Ui_TrackerViewerAux
-from MWTracker.analysis.ske_create.getSkeletonsTables import getWormMask
-from MWTracker.analysis.ske_create.segWormPython.mainSegworm import getSkeleton
+from tierpsy.gui.HDF5VideoPlayer import HDF5VideoPlayer_GUI, lineEditDragDrop
+from tierpsy.gui.TrackerViewerAux_ui import Ui_TrackerViewerAux
+from tierpsy.analysis.ske_create.getSkeletonsTables import getWormMask
+from tierpsy.analysis.ske_create.segWormPython.mainSegworm import getSkeleton
 
 
 #from scipy.signal import savgol_filter
@@ -56,8 +56,7 @@ class TrackerViewerAux_GUI(HDF5VideoPlayer_GUI):
         try:
             with pd.HDFStore(self.skeletons_file, 'r') as ske_file_id:
                 self.trajectories_data = ske_file_id['/trajectories_data']
-                self.traj_time_grouped = self.trajectories_data.groupby(
-                    'frame_number')
+                self.traj_time_grouped = self.trajectories_data.groupby('frame_number')
 
                 # read the size of the structural element used in to calculate
                 # the mask
@@ -100,9 +99,7 @@ class TrackerViewerAux_GUI(HDF5VideoPlayer_GUI):
         #find if it is a fluorescence image
         self.is_light_background = 1 if not 'is_light_background' in self.image_group._v_attrs \
             else self.image_group._v_attrs['is_light_background']
-
-
-
+        
         videos_dir, basename = os.path.split(vfilename)
         basename = os.path.splitext(basename)[0]
 

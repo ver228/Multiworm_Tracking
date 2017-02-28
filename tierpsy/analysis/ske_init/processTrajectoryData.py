@@ -9,14 +9,15 @@ import numpy as np
 import tables
 import pandas as pd
 import os
+import json
 
 from scipy.ndimage.filters import median_filter
 from scipy.signal import savgol_filter
 from scipy.interpolate import interp1d
 
-from MWTracker.analysis.ske_init.filterTrajectModel import filterModelWorms
-from MWTracker.helper.misc import TABLE_FILTERS
-from MWTracker.analysis.compress.extractMetaData import read_and_save_timestamp
+from tierpsy.analysis.ske_init.filterTrajectModel import filterModelWorms
+from tierpsy.helper.misc import TABLE_FILTERS
+from tierpsy.analysis.compress.extractMetaData import read_and_save_timestamp
 
 def getSmoothedTraj(trajectories_file,
                     min_track_size=100,
@@ -122,6 +123,8 @@ def getSmoothedTraj(trajectories_file,
     # interpolate for possible missing frames in the trajectories
     curr_rows = 0
     for worm_index, worm_data in df.groupby('worm_index_joined'):
+        worm_data = worm_data[['coord_x', 'coord_y', 'frame_number', 'threshold', 'area']]
+
         x = worm_data['coord_x'].values
         y = worm_data['coord_y'].values
         t = worm_data['frame_number'].values
@@ -131,12 +134,18 @@ def getSmoothedTraj(trajectories_file,
         first_frame = np.min(t)
         last_frame = np.max(t)
         worms_frame_range[worm_index] = (first_frame, last_frame)
-
+        
         tnew = np.arange(first_frame, last_frame + 1, dtype=np.int32)
 
         if len(tnew) <= min_track_size:
             continue
 
+        #add a random shift in case there is a duplicated value (interp1 will produce a nan otherwise)
+        delt = np.diff(t)
+        if np.any(delt == 0):
+            t = t.astype(np.float64)
+            t[1:-1] = np.random.rand(t.size-2)*(np.median(delt)/100)
+        
         # iterpolate missing points in the trajectory and smooth data using the
         # savitzky golay filter
         fx = interp1d(t, x)
@@ -144,6 +153,7 @@ def getSmoothedTraj(trajectories_file,
         xnew = fx(tnew)
         ynew = fy(tnew)
 
+        
         farea = interp1d(t, area)
         areanew = farea(tnew)
 
@@ -151,6 +161,7 @@ def getSmoothedTraj(trajectories_file,
         threshnew = fthresh(tnew)
 
         if len(tnew) > displacement_smooth_win and displacement_smooth_win > 3:
+            
             xnew = savgol_filter(xnew, displacement_smooth_win, 3)
             ynew = savgol_filter(ynew, displacement_smooth_win, 3)
             areanew = median_filter(areanew, displacement_smooth_win)
@@ -166,9 +177,9 @@ def getSmoothedTraj(trajectories_file,
         curr_rows = new_total
 
         # store the indexes in the original plate_worms table
-        plate_worm_id = np.empty(xnew.size, dtype=np.int32)
+        plate_worm_id = np.empty(tnew.size, dtype=np.int32)
         plate_worm_id.fill(-1)
-        plate_worm_id[t - first_frame] = worm_data.index
+        plate_worm_id[tnew - first_frame] = worm_data.index
 
         trajectories_df['worm_index_joined'][skeleton_id] = worm_index
         trajectories_df['coord_x'][skeleton_id] = xnew
@@ -218,9 +229,16 @@ def saveTrajData(trajectories_data, masked_image_file, skeletons_file):
             expected_fps = mask_dataset._v_attrs['expected_fps']
         else:
             expected_fps = 25 #default value
-
+    
     #save data into the skeletons file
     with tables.File(skeletons_file, "a") as ske_file_id:
+        plate_worms = ske_file_id.get_node('/plate_worms')
+        if 'bgnd_param' in plate_worms._v_attrs:
+            bgnd_param = plate_worms._v_attrs['bgnd_param']
+        else:
+            bgnd_param = bytes(json.dumps({})) #default empty
+
+
         ske_file_id.create_table(
             '/',
             'trajectories_data',
@@ -239,13 +257,14 @@ def saveTrajData(trajectories_data, masked_image_file, skeletons_file):
         trajectories_data._v_attrs['is_light_background'] = is_light_background
 
         trajectories_data._v_attrs['expected_fps'] = expected_fps
+        trajectories_data._v_attrs['bgnd_param'] = bgnd_param
 
 
 def processTrajectoryData(skeletons_file, masked_image_file, trajectories_file, smoothed_traj_param, filter_model_name = ''):
     '''
     Initialize the skeletons by creating the table `/trajectories_data`. This table is used by the GUI and by all the subsequent functions.
     filter_model_path -  name of the pretrainned keras model to used to filter worms from spurius blobs. 
-                         The file must be stored in the `MWTracker/aux` directory. If the variable is empty this step will be ignored.
+                         The file must be stored in the `tierpsy/aux` directory. If the variable is empty this step will be ignored.
     '''
 
 

@@ -6,7 +6,7 @@ Created on Thu Aug 11 10:00:43 2016
 """
 
 import os
-from MWTracker.helper.runMultiCMD import runMultiCMD
+from tierpsy.helper.runMultiCMD import runMultiCMD
 from helperFunc import getDefaultSequence, walkAndFindValidFiles
 from CheckFilesForProcessing import CheckFilesForProcessing
 from ProcessWormsLocal import ProcessWormsLocalParser

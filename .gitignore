@@ -2,19 +2,14 @@
 create_binaries/*.app
 create_binaries/create_builds/build/*
 create_binaries/create_builds/dist/*
-Tests/Data/*
-MWTracker.egg-info/*
+tests/data/*
 
 *.hdf5
 *.pyc
-
 *.m~
-
 *.DS_Store
-
-*.so
-
-*.so
 *.exe
+*.so
+*.*~
 
-MWTracker/analysis/ske_create/segWormPython/cythonFiles/*.cpython-35m-darwin.so
+tierpsy.egg-info/

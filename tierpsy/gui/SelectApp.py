@@ -3,11 +3,11 @@ from functools import partial
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtCore import Qt
 
-from MWTracker.gui.SelectApp_ui import Ui_SelectApp
-from MWTracker.gui.GetMaskParams import GetMaskParams_GUI
-from MWTracker.gui.MWTrackerViewer import MWTrackerViewer_GUI
-from MWTracker.gui.SWTrackerViewer import SWTrackerViewer_GUI
-from MWTracker.gui.BatchProcessing import BatchProcessing_GUI
+from tierpsy.gui.SelectApp_ui import Ui_SelectApp
+from tierpsy.gui.GetMaskParams import GetMaskParams_GUI
+from tierpsy.gui.MWTrackerViewer import MWTrackerViewer_GUI
+from tierpsy.gui.SWTrackerViewer import SWTrackerViewer_GUI
+from tierpsy.gui.BatchProcessing import BatchProcessing_GUI
 
 
 class SelectApp(QMainWindow):

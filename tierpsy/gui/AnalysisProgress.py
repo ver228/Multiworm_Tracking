@@ -13,8 +13,8 @@ from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QThread, Qt
 from PyQt5.QtGui import QTextCursor
 
 
-from MWTracker.gui.AnalysisProgress_ui import Ui_AnalysisProgress
-from MWTracker.helper.runMultiCMD import GUI_CLEAR_SIGNAL
+from tierpsy.gui.AnalysisProgress_ui import Ui_AnalysisProgress
+from tierpsy.helper.runMultiCMD import GUI_CLEAR_SIGNAL
 
 
 # based on http://stackoverflow.com/questions/21071448/redirecting-stdout-and-stderr-to-a-pyqt4-qtextedit-from-a-secondary-thread
@@ -139,18 +139,18 @@ def dumfun(N):
 
 
 if __name__ == '__main__':
-    from MWTracker.processing.trackSingleWorker import checkpoint
+    from tierpsy.processing.trackSingleWorker import checkpoint
 
     compress_argvs = {
-        'video_file': '/Users/ajaver/OneDrive - Imperial College London/MWTracker/Tests/test_1/RawVideos/Capture_Ch1_18062015_140908.mjpg',
-        'mask_dir': '/Users/ajaver/OneDrive - Imperial College London/MWTracker/Tests/test_1/RawVideos/MaskedVideos',
-        'json_file': '/Users/ajaver/OneDrive - Imperial College London/MWTracker/Tests/test_1/RawVideos/Capture_Ch1_18062015_140908.json',
+        'video_file': '/Users/ajaver/OneDrive - Imperial College London/tierpsy/Tests/test_1/RawVideos/Capture_Ch1_18062015_140908.mjpg',
+        'mask_dir': '/Users/ajaver/OneDrive - Imperial College London/tierpsy/Tests/test_1/RawVideos/MaskedVideos',
+        'json_file': '/Users/ajaver/OneDrive - Imperial College London/tierpsy/Tests/test_1/RawVideos/Capture_Ch1_18062015_140908.json',
         }
 
     track_argvs = {
-        'masked_image_file': '/Users/ajaver/OneDrive - Imperial College London/MWTracker/Tests/test_1/RawVideos/MaskedVideos/Capture_Ch1_18062015_140908.hdf5',
-        'results_dir': '/Users/ajaver/OneDrive - Imperial College London/MWTracker/Tests/test_1/RawVideos/Results',
-        'json_file': '/Users/ajaver/OneDrive - Imperial College London/MWTracker/Tests/test_1/RawVideos/Capture_Ch1_18062015_140908.json',
+        'masked_image_file': '/Users/ajaver/OneDrive - Imperial College London/tierpsy/Tests/test_1/RawVideos/MaskedVideos/Capture_Ch1_18062015_140908.hdf5',
+        'results_dir': '/Users/ajaver/OneDrive - Imperial College London/tierpsy/Tests/test_1/RawVideos/Results',
+        'json_file': '/Users/ajaver/OneDrive - Imperial College London/tierpsy/Tests/test_1/RawVideos/Capture_Ch1_18062015_140908.json',
         'start_point': -1, 'end_point': checkpoint['END'],
         'use_manual_join': False, 'cmd_original': 'GUI'}
 

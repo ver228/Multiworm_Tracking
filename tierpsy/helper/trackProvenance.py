@@ -19,11 +19,11 @@ def getVersion(main_package):
 
 
 def getGitCommitHash():
-    import MWTracker
+    import tierpsy
     import open_worm_analysis_toolbox
 
     commits_hash = {
-        'MWTracker': getVersion(MWTracker),
+        'tierpsy': getVersion(tierpsy),
         'open_worm_analysis_toolbox': getVersion(open_worm_analysis_toolbox)}
 
     return commits_hash

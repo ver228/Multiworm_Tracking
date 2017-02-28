@@ -3,7 +3,7 @@ import sys
 import os
 import tables
 import warnings
-from MWTracker import AUX_FILES_DIR
+from tierpsy import AUX_FILES_DIR
 
 from threading import Thread
 from queue import Queue, Empty

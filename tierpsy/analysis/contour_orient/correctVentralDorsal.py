@@ -1,9 +1,10 @@
 import json
-
+import os
 import numpy as np
 import tables
+import warnings
 
-from MWTracker.analysis.ske_filt.getFilteredSkels import _h_calAreaSignedArray
+from tierpsy.analysis.ske_filt.getFilteredSkels import _h_calAreaSignedArray
 
 
 def hasExpCntInfo(skeletons_file):
@@ -15,9 +16,13 @@ def hasExpCntInfo(skeletons_file):
         exp_info_b = fid.get_node('/experiment_info').read()
         exp_info = json.loads(exp_info_b.decode("utf-8"))
 
-        # print('ventral_side:{}'.format(exp_info['ventral_side']))
+        is_valid = exp_info['ventral_side'] in ['clockwise', 'anticlockwise', 'unknown']
+        # if not is_valid:
+        #     base_name = os.path.basename(skeletons_file).replace('_skeletons.hdf5', '')
+        #     print('{} Not valid ventral_side:({}) in /experiments_info'.format(base_name, exp_info['ventral_side']))
+        
         # only clockwise and anticlockwise are valid contour orientations
-        return exp_info['ventral_side'] in ['clockwise', 'anticlockwise']
+        return is_valid
 
 def isBadVentralOrient(skeletons_file):
     with tables.File(skeletons_file, 'r') as fid:
@@ -25,11 +30,10 @@ def isBadVentralOrient(skeletons_file):
         exp_info = json.loads(exp_info_b.decode("utf-8"))
 
         if not exp_info['ventral_side'] in ['clockwise', 'anticlockwise']:
-            raise ValueError(
-                '"{}" is not a valid value for '
-                'ventral side orientation. Only "clockwise" or "anticlockwise" '
-                'are accepted values'.format(
-                    exp_info['ventral_side']))
+            # msg = '{}: "{}" is not a valid value for ventral side orientation. '.format(skeletons_file, exp_info['ventral_side'])
+            # msg += 'Only "clockwise" or "anticlockwise" are accepted values'
+            # warnings.warn(msg)
+            return True
 
         has_skeletons = fid.get_node('/trajectories_data').col('has_skeleton')
 
@@ -50,9 +54,15 @@ def isBadVentralOrient(skeletons_file):
         return (exp_info['ventral_side'] == 'clockwise' and A_sign[0] < 0) or \
             (exp_info['ventral_side'] == 'anticlockwise' and A_sign[0] > 0)
 
+def isGoodVentralOrient(skeletons_file):
+    #save as isBadVentral but opposite, and fault tolerant
+    try:
+        return not isBadVentralOrient(skeletons_file)
+    except:
+        return False
 
 def switchCntSingleWorm(skeletons_file):
-        # change contours if they do not match the known orientation
+
     if isBadVentralOrient(skeletons_file):
         with tables.File(skeletons_file, 'r+') as fid:
             # since here we are changing all the contours, let's just change

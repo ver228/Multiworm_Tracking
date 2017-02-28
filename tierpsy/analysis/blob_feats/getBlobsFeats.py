@@ -3,10 +3,11 @@ import pandas as pd
 import tables
 import cv2
 import numpy as np
+import json
 
-from MWTracker.analysis.ske_create.helperIterROI import generateMoviesROI
-from MWTracker.analysis.ske_create.getSkeletonsTables import getWormMask
-from MWTracker.helper.misc import TABLE_FILTERS
+from tierpsy.analysis.ske_create.helperIterROI import generateMoviesROI
+from tierpsy.analysis.ske_create.getSkeletonsTables import getWormMask
+from tierpsy.helper.misc import TABLE_FILTERS
 
 def _getBlobFeatures(blob_cnt, blob_mask, roi_image, roi_corner):
     if blob_cnt.size > 0:
@@ -60,16 +61,25 @@ def _getBlobFeatures(blob_cnt, blob_mask, roi_image, roi_corner):
     return mask_feats
 
     
-def getBlobsFeats(skeletons_file, masked_image_file, is_light_background, strel_size):
+def getBlobsFeats(skeletons_file, masked_image_file, strel_size):
     # extract the base name from the masked_image_file. This is used in the
     # progress status.
     base_name = masked_image_file.rpartition('.')[0].rpartition(os.sep)[-1]
     progress_prefix =  base_name + ' Calculating individual blobs features.'
     
+
     #read trajectories data with pandas
     with pd.HDFStore(skeletons_file, 'r') as ske_file_id:
         trajectories_data = ske_file_id['/trajectories_data']
     
+
+    with tables.File(skeletons_file, 'r') as ske_file_id:
+        dd = ske_file_id.get_node('/trajectories_data')
+        is_light_background = dd._v_attrs['is_light_background']
+        expected_fps = dd._v_attrs['expected_fps']
+        bgnd_param = dd._v_attrs['bgnd_param']
+        bgnd_param = json.loads(bgnd_param.decode("utf-8"))
+
     #get generators to get the ROI for each frame
     ROIs_generator = generateMoviesROI(masked_image_file, 
                                          trajectories_data, 
