@@ -1,3 +1,4 @@
 {"analysis_type": "PHARYNX", "expected_fps": 3.0, "compression_buff": 3, "thresh_block_size": 15, "is_light_background": false, "thresh_C": 5, 
 "max_area": 100000, "dilation_size": 10, "strel_size": 0, "worm_bw_thresh_factor": 1.0, "filt_bad_seg_thresh": 0.0, 
-"fps_filter":0, "traj_area_ratio_lim":[0.25,4], "traj_max_allowed_dist": 90, "mask_min_area": 50, "traj_min_area": 75, "min_box_width": 10}
+"fps_filter":0, "traj_area_ratio_lim":[0.25,4], "traj_max_allowed_dist": 90, "mask_min_area": 50, "traj_min_area": 75, "min_box_width": 10,
+"int_avg_width_frac": 0.3, "int_save_maps": false, "int_width_resampling": 15, "int_length_resampling": 30, "max_gap_allowed_block": 1}
