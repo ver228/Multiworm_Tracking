@@ -93,7 +93,7 @@ def getBlobsFeats(skeletons_file, masked_image_file, strel_size):
         block = []
         for roi_dicts in ROIs_generator:
             for irow, (roi_image, roi_corner) in roi_dicts.items():
-                block.append((irow, (roi_image, roi_corner)))
+                block.append((irow, (roi_image.copy(), roi_corner)))
                 if len(block) == block_size:
                     yield block
                     block = []
@@ -125,15 +125,15 @@ def getBlobsFeats(skeletons_file, masked_image_file, strel_size):
     
     features_df = np.recarray(len(trajectories_data), 
                               dtype = [(x, np.float32) for x in feats_names])
-                                                   
-                                                   
+                                                    
+                                                    
     feats_generator = map(_roi2feats, _gen_rows_blocks())
     
         
     for block in feats_generator:
         for irow, row_dat in block:
             features_df[irow] = row_dat
-    
+                
     with tables.File(skeletons_file, 'r+') as fid: 
         if '/blob_features' in fid:
             fid.remove_node('/blob_features')
@@ -145,12 +145,14 @@ def getBlobsFeats(skeletons_file, masked_image_file, strel_size):
                 filters=TABLE_FILTERS) 
         assert all(x in feats_names for x in fid.get_node('/blob_features').colnames)
 
+
 if __name__ == '__main__':
     #masked_image_file = '/Volumes/behavgenom_archive$/Avelino/Worm_Rig_Tests/short_movies/MaskedVideos/double_pick_021216/N2_N6_Set4_Pos5_Ch5_02122016_160343.hdf5'
     
-    masked_image_file = '/Volumes/behavgenom_archive$/Serena/MaskedVideos/recording 29.9 green 100-200/recording 29.9 green_X1.hdf5'
+#    masked_image_file = '/Volumes/behavgenom_archive$/Serena/MaskedVideos/recording 29.9 green 100-200/recording 29.9 green_X1.hdf5'
+    masked_image_file = '/home/lferiani@cscdom.csc.mrc.ac.uk/Desktop/rambug/MaskedVideos/screw_focus_test_20181109_142319.22436248/metadata.hdf5'
     skeletons_file = masked_image_file.replace('MaskedVideos', 'Results').replace('.hdf5', '_skeletons.hdf5')
     
     is_light_background = True
     strel_size = 5
-    getBlobFeats(skeletons_file, masked_image_file, is_light_background, strel_size)
+    getBlobsFeats(skeletons_file, masked_image_file, strel_size)
