@@ -43,7 +43,7 @@ def getWormROI(img, CMx, CMy, roi_size=128):
     if range_y[1] > img.shape[0]:
         range_y[1] = img.shape[0]
 
-    worm_img = img[range_y[0]:range_y[1], range_x[0]:range_x[1]]
+    worm_img = img[range_y[0]:range_y[1], range_x[0]:range_x[1]].copy()
 
     roi_corner = np.array([range_x[0], range_y[0]])
 

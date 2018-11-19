@@ -93,7 +93,7 @@ def getBlobsFeats(skeletons_file, masked_image_file, strel_size):
         block = []
         for roi_dicts in ROIs_generator:
             for irow, (roi_image, roi_corner) in roi_dicts.items():
-                block.append((irow, (roi_image.copy(), roi_corner)))
+                block.append((irow, (roi_image, roi_corner)))
                 if len(block) == block_size:
                     yield block
                     block = []
