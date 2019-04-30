@@ -44,7 +44,8 @@ conda install -c conda-forge ffmpeg
 ```bash
 git clone https://github.com/ver228/tierpsy-tracker
 cd tierpsy-tracker
-source create -n tierpsy #[optional]
+conda create -n tierpsy #[optional]
+source activate tierpsy #[optional]
 conda install --file requirements.txt
 pip install -e .
 ```

@@ -64,7 +64,7 @@ def indentifyValidWorms(masked_file,
     
     
     base_name = masked_file.rpartition('.')[0].rpartition(os.sep)[-1]
-    progress_prefix =  base_name + ' Identifying valid wom trajectories.'
+    progress_prefix =  base_name + ' Identifying valid worm trajectories.'
     
     #get generators to get the ROI and calculate the worm probabilities from them
     ROIs_generator = generateMoviesROI(masked_file, 

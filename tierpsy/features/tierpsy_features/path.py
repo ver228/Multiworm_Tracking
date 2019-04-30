@@ -243,12 +243,17 @@ def _get_path_coverage_feats(timeseries_data, bin_size_microns):
         return {}
 
     path_coverage_feats = {}
+    # loop over worm body parts
     for b_part in set(x.rpartition('_')[-1] for x in bin_vals.columns):
+        # get the binned coordinates of the given body part 
+        # (the coordinates defining in which square of the grid the worm body part is)
         dat = bin_vals[['coord_x_' + b_part,'coord_y_' + b_part]]
         dat.columns = ['X', 'Y']
+        # groupby individual grid squares
         gg = dat.groupby(["X", "Y"])
         
         #here i am counting the number of times any worm enter to a given grid
+        # count the number of worm occurancies in each grid square throughout the video
         grid_counts = gg.size().reset_index(name="Counts")
         #cc = pd.crosstab(dat['X'], dat['Y'])
         

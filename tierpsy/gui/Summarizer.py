@@ -28,6 +28,7 @@ class Summarizer_GUI(QtWidgets.QMainWindow):
         self.ui.pushButton_start.clicked.connect(self.startAnalysis)
         self.ui.pushButton_rootdir.clicked.connect(self.getRootDir)
         self.ui.p_summary_type.currentIndexChanged.connect(self.viewFoldArgs)
+        self.ui.p_feature_type.currentIndexChanged.connect(self.viewTimeWindows)
 
         LineEditDragDrop(self.ui.p_root_dir, self.updateRootDir, os.path.isdir)
 
@@ -49,6 +50,12 @@ class Summarizer_GUI(QtWidgets.QMainWindow):
             self.ui.FoldArgs.show()
         else:
             self.ui.FoldArgs.hide()
+
+    def viewTimeWindows(self):
+        if self.mapper['feature_type'] == 'tierpsy':
+            self.ui.TimeWindows.show()
+        else:
+            self.ui.TimeWindows.hide()
 
     def startAnalysis(self):
         process_args = {k:self.mapper[k] for k in self.mapper}

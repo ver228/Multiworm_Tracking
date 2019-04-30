@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_BatchProcessing(object):
     def setupUi(self, BatchProcessing):
         BatchProcessing.setObjectName("BatchProcessing")
-        BatchProcessing.resize(897, 637)
+        BatchProcessing.resize(594, 504)
         self.centralwidget = QtWidgets.QWidget(BatchProcessing)
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.centralwidget)
@@ -169,7 +169,7 @@ class Ui_BatchProcessing(object):
         self.verticalLayout_2.addLayout(self.horizontalLayout_2)
         BatchProcessing.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(BatchProcessing)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 897, 22))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 594, 22))
         self.menubar.setObjectName("menubar")
         BatchProcessing.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(BatchProcessing)

@@ -35,7 +35,7 @@ class ProcessLocal(object):
 
         for dname in [self.results_dir,  self.masks_dir]:
             if not os.path.exists(dname):
-                os.makedirs(dname)
+                os.makedirs(dname,exist_ok=True)
         
         self.analysis_checkpoints = analysis_checkpoints
         
@@ -61,7 +61,7 @@ class ProcessLocal(object):
         #make directories
         for dirname in [self.tmp_results_dir, self.tmp_mask_dir, self.results_dir, self.masks_dir]:
             if not os.path.exists(dirname):
-                os.makedirs(dirname)
+                os.makedirs(dirname,exist_ok=True)
         
         #create objects for analysis points using the source and the temporary directory
         self.ap_src = AnalysisPoints(self.main_file, self.masks_dir, results_dir, self.json_file)

@@ -31,6 +31,19 @@ dflt_args_list = [
         False,
         'Set to true to calculate data using manually edited trajectories used Tierpsy Viewer.'
         ),
+    ('time_windows',
+        '0:end',
+        '''
+        Define time windows to extract features from the parts of the video included in each window.
+        Each window must be defined by the start time and the end time connected by \':\'. 
+        Different windows must be separated by \',\'. 
+        Attention: the start time is included in the window, but the end time is not included.
+        '''
+        ),
+    ('time_units',
+        'frame_numbers',
+        'Units of start time and end time in Time Windows.'
+        ),
     ('n_folds',
         5,
         '''
