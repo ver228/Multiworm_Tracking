@@ -59,8 +59,8 @@ class StartProcess():
         self.output += [cmdlist2str(self.cmd) + '\n']
         
         self.proc = sp.Popen(self.cmd, stdout=sp.PIPE, stderr=sp.PIPE,
-                             bufsize=1, close_fds=ON_POSIX)
-                             # env=dict(os.environ.copy(),OMP_NUM_THREADS='1'))
+                             bufsize=1, close_fds=ON_POSIX,
+                             env=dict(os.environ.copy(),OMP_NUM_THREADS='1'))
         self.buf_reader = ReadEnqueue(self.proc.stdout)
         
     def read_buff(self):
