@@ -9,8 +9,8 @@
 
 conda create -n tierpsy 
 
-conda activate tierpsy [#Windows]
-source activate tierpsy [#OSX or Linux]
+conda activate tierpsy #[Windows]
+source activate tierpsy #[OSX or Linux]
 ```
 - Finally, donwload the package from conda-forge
 ```bash
