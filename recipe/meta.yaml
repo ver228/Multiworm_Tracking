@@ -1,6 +1,6 @@
 package:
   name: tierpsy
-  version: "1.5.1-beta"
+  version: "1.5.2a"
 
 source:
   path: ..
@@ -12,7 +12,7 @@ build:
 
 requirements:
   build:
-    - python
+    - python=3.6
     - numpy >=1.14
     - setuptools
     - cython
@@ -20,13 +20,15 @@ requirements:
   run:
     - python
     - keras=2.1.5 
-    - opencv 
-    - tensorflow 
+    - opencv=3.4.3
+    - tensorflow=1.0.0  # [unix]
+    - tensorflow        # [windows]
     - numpy >=1.14
     - matplotlib 
     - pytables 
     - pandas 
-    - pyqt
+    - pyqt=5.6          # [windows]
+    - pyqt              # [unix]
     - scipy 
     - scikit-learn 
     - scikit-image
