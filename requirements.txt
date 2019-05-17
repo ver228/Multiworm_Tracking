@@ -1,16 +1,16 @@
-conda-forge::cython
-conda-forge::keras=2.1.5 
-opencv=3.4.2 
-conda-forge::tensorflow=1.0.0
-conda-forge::numpy >=1.14
-conda-forge::matplotlib 
-conda-forge::pytables 
-conda-forge::pandas 
-conda-forge::pyqt
-conda-forge::scipy 
-conda-forge::scikit-learn 
-conda-forge::scikit-image
-conda-forge::statsmodels 
-conda-forge::numba
-conda-forge::tqdm
-conda-forge::requests
+cython
+keras=2.1.5 
+opencv=3.4.3
+tensorflow=1.0.0
+numpy >=1.14
+matplotlib 
+pytables 
+pandas 
+pyqt
+scipy 
+scikit-learn 
+scikit-image
+statsmodels 
+numba
+tqdm
+requests
