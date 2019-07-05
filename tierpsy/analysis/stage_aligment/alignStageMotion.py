@@ -45,7 +45,7 @@ def _h_get_stage_inv(skeletons_file, timestamp):
     # adjust the stage_vec to match the timestamps in the skeletons
     good = (timestamp_ind >= first_frame) & (timestamp_ind <= last_frame)
 
-    ind_ff = (timestamp_ind[good] - first_frame).astype(np.int) #make sure it is int to be used as index
+    ind_ff = timestamp_ind[good] - first_frame
     if timestamp_ind.shape[0] > stage_vec_ori.shape[0]:
         #there are extra elements in the timestamp_ind, let's pad it with the same value in the stage vector
         extra_n = timestamp_ind.shape[0] - stage_vec_ori.shape[0]
@@ -54,7 +54,6 @@ def _h_get_stage_inv(skeletons_file, timestamp):
     stage_vec_ori = stage_vec_ori[good]
 
     stage_vec = np.full((timestamp.size, 2), np.nan)
-
     stage_vec[ind_ff, :] = stage_vec_ori
     # the negative symbole is to add the stage vector directly, instead of
     # substracting it.

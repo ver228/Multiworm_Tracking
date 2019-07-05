@@ -64,13 +64,12 @@ class CheckPoints(object):
 class AnalysisPoints(object):
     def __init__(self, video_file, masks_dir, 
         results_dir, json_file = ''):
-
-        self.video_file = os.path.realpath(os.path.abspath(video_file))
-        self.results_dir = os.path.realpath(os.path.abspath(results_dir))
-        self.masks_dir = os.path.realpath(os.path.abspath(masks_dir))
-
         
-        self.getFileNames(self.video_file, self.masks_dir, self.results_dir)
+        self.getFileNames(video_file, masks_dir, results_dir)
+        
+        self.video_file = video_file
+        self.masks_dir = masks_dir
+        self.results_dir = results_dir
         
         self.param = TrackerParams(json_file)
         self.checkpoints = CheckPoints(self.file_names, self.param)

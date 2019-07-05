@@ -309,7 +309,7 @@ class TrackerViewerAuxGUI(HDF5VideoPlayerGUI):
                     dat = ske_file_id.get_node(field)[skel_id]
                     dat /= self.microns_per_pixel
                     
-                    if self.stage_position_pix is not None and self.stage_position_pix.size > 0:
+                    if self.stage_position_pix is not None:
                         #subtract stage motion if necessary
                         dat -= self.stage_position_pix[self.frame_number]
                     
