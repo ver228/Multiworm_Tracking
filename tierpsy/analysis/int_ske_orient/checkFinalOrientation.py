@@ -11,7 +11,6 @@ import os
 import numpy as np
 import pandas as pd
 import tables
-import warnings
 
 from scipy.signal import savgol_filter
 from tierpsy.analysis.ske_orient.checkHeadOrientation import isWormHTSwitched
@@ -96,8 +95,8 @@ def getHeadProbMov(
     p_mov = p_mov.values[ind_valid]
     
     if p_mov.size == 0:
-        w_ind = trajectories_worm['worm_index_joined'].iloc[0]
-        warnings.warn('There is something weird with trajectory {} in file {}. No valid head tail movements found.'.format(w_ind, skeletons_file))
+        import pdb
+        pdb.set_trace()
     #average using only the indexes of valid skeletons
     p_mov_avg = np.nanmean(p_mov)
     

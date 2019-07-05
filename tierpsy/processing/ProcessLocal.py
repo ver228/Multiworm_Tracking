@@ -23,11 +23,11 @@ BATCH_SCRIPT_LOCAL = get_real_script_path(__file__, 'ProcessLocal')
 class ProcessLocal(object):
     def __init__(self, main_file, masks_dir, results_dir, tmp_mask_dir='',
             tmp_results_dir='', json_file='', analysis_checkpoints = [], 
-            is_copy_video = False, copy_unfinished = False):
+            is_copy_video = False, copy_unfinished=False):
         
-        self.main_file = os.path.realpath(os.path.abspath(main_file))
-        self.results_dir = os.path.realpath(os.path.abspath(results_dir))
-        self.masks_dir = os.path.realpath(os.path.abspath(masks_dir))
+        self.main_file = os.path.realpath(main_file)
+        self.results_dir = os.path.realpath(results_dir)
+        self.masks_dir = os.path.realpath(masks_dir)
 
         #check that the files do exists
         if not os.path.exists(self.main_file):
@@ -72,12 +72,9 @@ class ProcessLocal(object):
         self.unfinished_points_src = self.ap_src.getUnfinishedPoints(self.analysis_checkpoints)
         self.unfinished_points_tmp = self.ap_tmp.getUnfinishedPoints(self.analysis_checkpoints)
         
-        #TODO, here i should be more strict. If there are more unfinished points in temporary, use only the files in src...
-
-
         #get the points to be processed compared with the existing files
-        self.checkpoints2process = self._getPoints2Process(self.unfinished_points_src, self.unfinished_points_tmp)
-
+        self.checkpoints2process = self._getPoints2Process()
+    
     # we need to group steps into start and clean steps for the multiprocess
     # part
     def start(self):
@@ -85,7 +82,6 @@ class ProcessLocal(object):
         
         self.start_time = time.time()
         #copy tmp files
-        
         self._copyFinaltoTmp()
         args = [self.tmp_main_file]
         argkws = {'masks_dir':self.tmp_mask_dir, 'results_dir':self.tmp_results_dir, 
@@ -108,22 +104,21 @@ class ProcessLocal(object):
         
         print_flush(progress_str)
         
-    def _getPoints2Process(self, _unfinished_points_src, _unfinished_points_tmp):
+    def _getPoints2Process(self):
         def assignAndCheckSubset(small_list, larger_list):
             assert set(small_list).issubset(set(larger_list))
             return small_list
 
-        if len(_unfinished_points_src) < len(_unfinished_points_tmp):
-            checkpoints2process = assignAndCheckSubset(_unfinished_points_src, _unfinished_points_tmp)
+        if len(self.unfinished_points_src) < len(self.unfinished_points_tmp):
+            checkpoints2process = assignAndCheckSubset(self.unfinished_points_src, self.unfinished_points_tmp)
         else:
-            checkpoints2process = assignAndCheckSubset(_unfinished_points_tmp, _unfinished_points_src)
+            checkpoints2process = assignAndCheckSubset(self.unfinished_points_tmp, self.unfinished_points_src)
         return checkpoints2process
     
     def _copyFinaltoTmp(self):
         #files that are required as input
         inputs_required = self._points2Files(self.checkpoints2process, self.ap_tmp, "input_files")
         
-
         new_created_files = self._getNewFilesCreated(self.checkpoints2process, self.ap_tmp) 
         #files that are required as input but are not produced later on
         needed_files = inputs_required - new_created_files
@@ -149,6 +144,7 @@ class ProcessLocal(object):
                                                self.ap_tmp.file2dir_dict)
 
         files2copy += self._getAddFilesForTmpSW()
+
 
         self._copyFilesLocal(files2copy)
     
@@ -196,6 +192,8 @@ class ProcessLocal(object):
         self._deleteTmpFiles()
         
 
+             
+
     def _deleteTmpFiles(self):    
         def _points2FullFiles(points2check, ap_obj, field_name):
             data = ap_obj.getField(field_name, points2check)
@@ -210,11 +208,9 @@ class ProcessLocal(object):
         #CLEAN
         all_tmp_files = _points2FullFiles(self.analysis_checkpoints, self.ap_tmp, "output_files") | \
         _points2FullFiles(self.analysis_checkpoints, self.ap_tmp, "input_files")
-        all_tmp_files = set(map(os.path.realpath, map(os.path.abspath, all_tmp_files)))
         
         all_src_files = _points2FullFiles(self.analysis_checkpoints, self.ap_src, "output_files") | \
         _points2FullFiles(self.analysis_checkpoints, self.ap_src, "input_files")
-        all_src_files = set(map(os.path.realpath, map(os.path.abspath, all_src_files)))
         
         #remove all tmp files that are not in the source
         files2remove = all_tmp_files - all_src_files
@@ -267,10 +263,10 @@ class ProcessLocal(object):
     def _copyFilesLocal(self, files2copy):
         ''' copy files to the source directory'''
         for files in files2copy:
-            file_name, destination = map(os.path.realpath, map(os.path.abspath, files))
+            file_name, destination = files
             assert(os.path.exists(destination))
-            
-            if os.path.dirname(file_name) != destination:
+    
+            if os.path.abspath(os.path.dirname(file_name)) != os.path.abspath(destination):
                 print_flush('Copying %s to %s' % (file_name, destination))
                 shutil.copy(file_name, destination)
 

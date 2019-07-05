@@ -34,7 +34,6 @@ requirements:
     - numba
     - tqdm
     - requests
-    - ffmpeg
     
 app:
   entry: tierpsy_gui
