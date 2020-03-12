@@ -16,7 +16,7 @@ def selectVideoReader(video_file):
     isMJPGvideo = video_file.endswith('.mjpg')
     isDATfiles = video_file.endswith('spool.dat')
     isLoopBio = video_file.endswith('.yaml')
-    
+
     isImages = any(video_file.endswith(x) for x in IMG_EXT)
 
 
@@ -30,7 +30,7 @@ def selectVideoReader(video_file):
         vid = ReadVideoFFMPEG(video_file)
     elif isDATfiles:
         video_dir = os.path.split(video_file)[0]
-        vid = readDatFile(video_dir)
+        vid = readDatFiles(video_dir)
     elif isLoopBio:
         # use opencv VideoCapture
         vid = readLoopBio(video_file)
@@ -42,7 +42,7 @@ def selectVideoReader(video_file):
         vid = readImages(video_dir, f_ext)
     else:
         vid = readVideoCapture(video_file)
-        
+
     #raise an error if it is not a valid video (cannot read a frame)
     if vid.width == 0 or vid.height == 0:
         raise RuntimeError

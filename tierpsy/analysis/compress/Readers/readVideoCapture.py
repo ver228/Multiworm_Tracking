@@ -16,7 +16,7 @@ class readVideoCapture():
         # get video frame, stop program when no frame is retrive (end of file)
         ret, image = vid.read()
         vid.release()
-            
+
         if ret:
             self.height = image.shape[0]
             self.width = image.shape[1]
@@ -27,10 +27,12 @@ class readVideoCapture():
             raise OSError(
                 'Cannot get an image from %s.\n It is likely that either the file name is wrong, the file is corrupt or OpenCV was not installed with ffmpeg support.' %
                 video_file)
-        
+
     def read(self):
         return self.vid.read()
-    
+
+    def __len__(self):
+        return int(self.vid.get(cv2.CAP_PROP_FRAME_COUNT))
+
     def release(self):
         return self.vid.release()
-        
