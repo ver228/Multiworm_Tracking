@@ -296,7 +296,7 @@ def compressVideo(video_file, masked_image_file, mask_param,  expected_fps=25,
     # TODO: change class creator so it only needs the video name? by using
     # Tierpsy's functions such as selectVideoReader it can then read the first image by itself
 
-    if is_FOV_tosplit:
+    if is_fov_tosplit:
         camera_serial = parse_camera_serial(masked_image_file)
 
         fovsplitter = FOVMultiWellsSplitter(img_fov,
