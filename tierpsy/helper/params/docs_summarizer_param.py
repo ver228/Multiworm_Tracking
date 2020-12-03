@@ -12,18 +12,18 @@ summarizer_valid_options = {
 }
 
 dflt_args_list = [
-    ('root_dir', 
-        '', 
+    ('root_dir',
+        '',
         'Root directory where the features files are located and the results are going to be saved.'
         ),
-    ('feature_type', 
-        'tierpsy', 
+    ('feature_type',
+        'tierpsy',
         '''
         Type of feature file to be used. Either the original OpenWorm features or the new Tierpsy Features.
         '''
         ),
-    ('summary_type', 
-        'plate', 
+    ('summary_type',
+        'plate',
         '''
         Indicates if the summary is going to be done over each individual plate, each individual trajectory or
         is going to be a data augmentation by randomingly sampling over a subset of the plate trajectories.
@@ -37,7 +37,7 @@ dflt_args_list = [
         '0:end',
         '''
         Define time windows to extract features from the parts of the video included in each window.
-        Each window must be defined by the start_time and the end_time connected by \':\' (start_time:end_time). 
+        Each window must be defined by the start_time and the end_time connected by \':\' (start_time:end_time).
         Different windows must be separated by \',\' (start_time_1:end_time_1, start_time_2:end_time_2).
         A sequence of equally sized windows can be defined using the format \'start_time:end_time:step'\.
         Attention: the start_time is included in the window, but the end_time is not included.
@@ -52,6 +52,18 @@ dflt_args_list = [
         '''
         Get a pre-selected subset of tierpsy features or select features by keywords.
         '''
+        ),
+    ('abbreviate_features',
+        False,
+        'Shorten the feature names so that they are compatible with MATLAB'
+        ),
+    ('dorsal_side_known',
+        False,
+        '''
+        Dorsal side of worm has been annotated on videos. If dorsal side is not
+        known then only absolute values for d/v signed features are returned.
+        (nb. d/v features are not included in the 2k, 512, 256, 16 and 8 sets anyway)
+        ''',
         ),
     ('keywords_include',
         '',
@@ -71,7 +83,7 @@ dflt_args_list = [
         Number of times each subsampling is going to be repeated (only for plate_augmentation).
         '''
         ),
-    
+
     ('frac_worms_to_keep',
         0.8,
         'Fraction of the total number trajectories that is going to be keep for each subsampling.'

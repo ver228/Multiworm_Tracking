@@ -22,6 +22,7 @@ from tierpsy.helper.params import traj_create_defaults, read_unit_conversions, r
 from tierpsy.helper.misc import TimeCounter, print_flush, TABLE_FILTERS
 
 
+
 def _thresh_bw(pix_valid):
     # calculate otsu_threshold as lower limit. Otsu understimates the threshold.
     try:
@@ -42,7 +43,7 @@ def _thresh_bw(pix_valid):
 
         xx = np.arange(otsu_thresh, cumhist.size)
         try:
-            # the threshold is calculated as the first pixel level above the otsu threshold 
+            # the threshold is calculated as the first pixel level above the otsu threshold
             # at which there would be larger increase in the object area.
             hist_ratio = pix_hist[xx] / cumhist[xx]
             thresh = np.where(
@@ -70,11 +71,11 @@ def getBufferThresh(ROI_buffer, worm_bw_thresh_factor, is_light_background, anal
     ''' calculate threshold using the nonzero pixels.  Using the
      buffer instead of a single image, improves the threshold
      calculation, since better statistics are recovered'''
-     
+
     if analysis_type == "ZEBRAFISH":
         # Override threshold
         thresh = 255
-    else: 
+    else:
         pix_valid = ROI_buffer[ROI_buffer != 0]
 
 
@@ -93,7 +94,7 @@ def getBufferThresh(ROI_buffer, worm_bw_thresh_factor, is_light_background, anal
             thresh *= worm_bw_thresh_factor
         else:
             thresh = np.nan
-    
+
     return thresh
 
 
@@ -103,8 +104,8 @@ def _remove_corner_blobs(ROI_image):
     # worms
     ROI_valid = (ROI_image != 0).astype(np.uint8)
 
-    ROI_border_ind, _ = cv2.findContours(ROI_valid, 
-                                            cv2.RETR_EXTERNAL, 
+    ROI_border_ind, _ = cv2.findContours(ROI_valid,
+                                            cv2.RETR_EXTERNAL,
                                             cv2.CHAIN_APPROX_NONE)[-2:]
 
 
@@ -120,7 +121,7 @@ def _remove_corner_blobs(ROI_image):
     return ROI_image
 
 def _get_blob_mask(ROI_image, thresh, thresh_block_size, is_light_background, analysis_type):
-    # get binary image, 
+    # get binary image,
     if is_light_background:
         ## apply a median filter to reduce rough edges / sharpen the boundary btw worm and background
         ROI_image_th = cv2.medianBlur(ROI_image, 3)
@@ -137,7 +138,7 @@ def _get_blob_mask(ROI_image, thresh, thresh_block_size, is_light_background, an
             # this case applies for example to worms where the whole body is fluorecently labeled
             ROI_image_th = cv2.medianBlur(ROI_image, 3)
             ROI_mask = ROI_image_th >= thresh
-        
+
     ROI_mask &= (ROI_image != 0)
     ROI_mask = ROI_mask.astype(np.uint8)
 
@@ -145,17 +146,17 @@ def _get_blob_mask(ROI_image, thresh, thresh_block_size, is_light_background, an
 
 
 
-def getBlobContours(ROI_image, 
-                    thresh, 
-                    strel_size=(5, 5), 
-                    is_light_background=True, 
-                    analysis_type="WORM", 
+def getBlobContours(ROI_image,
+                    thresh,
+                    strel_size=(5, 5),
+                    is_light_background=True,
+                    analysis_type="WORM",
                     thresh_block_size=15):
 
-    
+
     ROI_image = _remove_corner_blobs(ROI_image)
     ROI_mask, thresh = _get_blob_mask(ROI_image, thresh, thresh_block_size, is_light_background, analysis_type)
-    
+
     # clean it using morphological closing - make this optional by setting strel_size to 0
     if np.all(strel_size):
         strel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, strel_size)
@@ -163,8 +164,8 @@ def getBlobContours(ROI_image,
 
     # get worms, assuming each contour in the ROI is a worm
 
-    ROI_worms, hierarchy = cv2.findContours(ROI_mask, 
-                                               cv2.RETR_EXTERNAL, 
+    ROI_worms, hierarchy = cv2.findContours(ROI_mask,
+                                               cv2.RETR_EXTERNAL,
                                                cv2.CHAIN_APPROX_NONE)[-2:]
 
 
@@ -172,9 +173,9 @@ def getBlobContours(ROI_image,
 
 
 def getBlobDimesions(worm_cnt, ROI_bbox):
-    
+
     area = float(cv2.contourArea(worm_cnt))
-    
+
     worm_bbox = cv2.boundingRect(worm_cnt)
     bounding_box_xmin = ROI_bbox[0] + worm_bbox[0]
     bounding_box_xmax = bounding_box_xmin + worm_bbox[2]
@@ -182,7 +183,7 @@ def getBlobDimesions(worm_cnt, ROI_bbox):
     bounding_box_ymax = bounding_box_ymin + worm_bbox[3]
 
     # save everything into the the proper output format
-    blob_bbox =(bounding_box_xmin, 
+    blob_bbox =(bounding_box_xmin,
                 bounding_box_xmax,
                 bounding_box_ymin,
                 bounding_box_ymax)
@@ -195,96 +196,96 @@ def getBlobDimesions(worm_cnt, ROI_bbox):
 
     if W > L:
         L, W = W, L  # switch if width is larger than length
-    
+
     blob_dims = (CMx, CMy, L, W, angle)
     return blob_dims, area, blob_bbox
-    
-def generateImages(masked_image_file, 
-                   frames=[], 
+
+def generateImages(masked_image_file,
+                   frames=[],
                    bgnd_param = {},
-                   progress_str='', 
+                   progress_str='',
                    progress_refresh_rate_s=20):
-    
+
     #loop, save data and display progress
     base_name = Path(masked_image_file).stem
     progress_str = base_name + progress_str
     fps = read_fps(masked_image_file, dflt=25)
-    
+
     progress_refresh_rate = fps*progress_refresh_rate_s
-    
-    
-    
+
+
+
     with tables.File(masked_image_file, 'r') as mask_fid:
         mask_dataset = mask_fid.get_node("/mask")
-        
+
         tot_frames = mask_dataset.shape[0]
-        progress_time = TimeCounter(progress_str, tot_frames)  
-        
-        
+        progress_time = TimeCounter(progress_str, tot_frames)
+
+
         if len(bgnd_param) > 0:
-            
-            if '/bgnd'  in mask_fid: 
+
+            if '/bgnd'  in mask_fid:
                 bgnd_subtractor = BackgroundSubtractorPrecalculated(masked_image_file, **bgnd_param)
             else:
                 bgnd_subtractor = BackgroundSubtractorMasked(masked_image_file, **bgnd_param)
         else:
             bgnd_subtractor = None
-        
-        
-        
+
+
+
         if len(frames) == 0:
             frames = range(mask_dataset.shape[0])
-        
+
         for frame_number in frames:
             if frame_number % progress_refresh_rate == 0:
                 print_flush(progress_time.get_str(frame_number))
-                
+
             image = mask_dataset[frame_number]
-            
+
             if bgnd_subtractor is not None:
                 image  = bgnd_subtractor.apply(image, frame_number)
-                
+
             yield frame_number, image
-            
+
     print_flush( progress_time.get_str(frame_number))
-    
-    
+
+
 
 def generateROIBuff(masked_image_file, buffer_size, **argkws):
     img_generator = generateImages(masked_image_file)
-    
+
     with tables.File(masked_image_file, 'r') as mask_fid:
         tot_frames, im_h, im_w = mask_fid.get_node("/mask").shape
-    
+
     for frame_number, image in img_generator:
         if frame_number % buffer_size == 0:
             if frame_number + buffer_size > tot_frames:
                 buffer_size = tot_frames-frame_number #change this value, otherwise the buffer will not get full
             image_buffer = np.zeros((buffer_size, im_h, im_w), np.uint8)
-            ini_frame = frame_number            
-        
-        
+            ini_frame = frame_number
+
+
         image_buffer[frame_number-ini_frame] = image
-        
+
         #compress if it is the last frame in the buffer
         if (frame_number+1) % buffer_size == 0 or (frame_number+1 == tot_frames):
             # z projection and select pixels as connected regions that were selected as worms at
             # least once in the masks
             main_mask = np.any(image_buffer, axis=0)
-    
+
             # change from bool to uint since same datatype is required in
             # opencv
             main_mask = main_mask.astype(np.uint8)
-    
-            #calculate the contours, only keep the external contours (no holes) and 
 
-            ROI_cnts, _ = cv2.findContours(main_mask, 
-                                                cv2.RETR_EXTERNAL, 
+            #calculate the contours, only keep the external contours (no holes) and
+
+            ROI_cnts, _ = cv2.findContours(main_mask,
+                                                cv2.RETR_EXTERNAL,
                                                 cv2.CHAIN_APPROX_NONE)[-2:]
 
-    
+
             yield ROI_cnts, image_buffer, ini_frame
-        
+
 
 
 
@@ -293,7 +294,7 @@ def _cnt_to_ROIs(ROI_cnt, image_buffer, min_box_width):
     ROI_bbox = cv2.boundingRect(ROI_cnt)
     # bounding box too small to be a worm - ROI_bbox[2] and [3] are width and height
     if ROI_bbox[2] > min_box_width and ROI_bbox[3] > min_box_width:
-        # select ROI for all buffer slides 
+        # select ROI for all buffer slides
         ini_x = ROI_bbox[1]
         fin_x = ini_x + ROI_bbox[3]
         ini_y = ROI_bbox[0]
@@ -305,7 +306,7 @@ def _cnt_to_ROIs(ROI_cnt, image_buffer, min_box_width):
     return ROI_buffer, ROI_bbox
 
 def _cnt_to_props(ROI_worms, current_frame, thresh, min_area, ROI_bbox=(0,0,0,0)):
-    
+
     props = []
     for worm_cnt in ROI_worms:
         # obtain features for each worm
@@ -313,19 +314,19 @@ def _cnt_to_props(ROI_worms, current_frame, thresh, min_area, ROI_bbox=(0,0,0,0)
         if area >= min_area:
             # append data to pytables only if the object is larget than min_area
             row = (-1, -1, current_frame, *blob_dims, area, *blob_bbox, thresh)
-            
+
             props.append(row)
-    
+
     return props
 
 
 def getBlobsData(buff_data, blob_params):
     #I packed input data to be able top to map the function into generateROIBuff
     ROI_cnts, image_buffer, frame_number = buff_data
-    
+
     is_light_background, min_area, min_box_width, worm_bw_thresh_factor, \
     strel_size, analysis_type, thresh_block_size = blob_params
-    
+
     blobs_data = []
     # examinate each region of interest
     for ROI_cnt in ROI_cnts:
@@ -334,52 +335,52 @@ def getBlobsData(buff_data, blob_params):
         if ROI_buffer is not None:
             # calculate threshold
             thresh_buff = getBufferThresh(ROI_buffer, worm_bw_thresh_factor, is_light_background, analysis_type)
-            
+
             for buff_ind in range(image_buffer.shape[0]):
                 curr_ROI = ROI_buffer[buff_ind, :, :]
-    
+
                 # get the contour of possible worms
-                ROI_worms, hierarchy = getBlobContours(curr_ROI, 
-                                                        thresh_buff, 
-                                                        strel_size, 
+                ROI_worms, hierarchy = getBlobContours(curr_ROI,
+                                                        thresh_buff,
+                                                        strel_size,
                                                         is_light_background,
-                                                        analysis_type, 
+                                                        analysis_type,
                                                         thresh_block_size)
                 current_frame = frame_number + buff_ind
-                
+
                 # make sure there are no holes in the contours. This shouldn't occur with the flag RETR_EXTERNAL
                 assert all([hierarchy[0][x][3] == -1 for x in range(len(ROI_worms))])
-                
+
                 blobs_data += _cnt_to_props(ROI_worms, current_frame, thresh_buff, min_area, ROI_bbox)
-                
+
     return blobs_data
 
 
 def getBlobsSimple(in_data, blob_params):
     frame_number, image = in_data
     min_area, worm_bw_thresh_factor, strel_size = blob_params
-    
-    
+
+
     img_m = cv2.medianBlur(image, 3)
-    
+
     valid_pix = img_m[img_m>0]
     if len(valid_pix) == 0:
         return []
-    
+
     th = _thresh_bw(valid_pix)*worm_bw_thresh_factor
-    
+
     _, bw = cv2.threshold(img_m, th,255,cv2.THRESH_BINARY)
     if np.all(strel_size):
         strel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, strel_size)
         bw = cv2.morphologyEx(bw, cv2.MORPH_CLOSE, strel)
 
     cnts, hierarchy = cv2.findContours(bw, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[-2:]
-    
-    
+
+
     blobs_data = _cnt_to_props(cnts, frame_number, th, min_area)
     return blobs_data
 
-def getBlobsTable(masked_image_file, 
+def getBlobsTable(masked_image_file,
                   trajectories_file,
                   buffer_size = None,
                     min_area=25,
@@ -388,14 +389,14 @@ def getBlobsTable(masked_image_file,
                     strel_size=(5,5),
                     analysis_type="WORM",
                     thresh_block_size=15,
-                    n_cores_used = 1, 
+                    n_cores_used = 1,
                     bgnd_param = {}):
-    
+
     #correct strel if it is not a tuple or list
     if not isinstance(strel_size, (tuple,list)):
         strel_size = (strel_size, strel_size)
     assert len(strel_size) == 2
-    
+
     #read properties
     fps_out, _, is_light_background = read_unit_conversions(masked_image_file)
     expected_fps = fps_out[0]
@@ -404,18 +405,18 @@ def getBlobsTable(masked_image_file,
     if len(bgnd_param) > 0:
         bgnd_param['is_light_background'] = int(is_light_background)
     buffer_size = traj_create_defaults(masked_image_file, buffer_size)
-    
+
 
     def _ini_plate_worms(traj_fid, masked_image_file):
         # intialize main table
-    
+
         int_dtypes = [('worm_index_blob', np.int),
                       ('worm_index_joined', np.int),
                       ('frame_number', np.int)]
-        dd = ['coord_x', 
-              'coord_y', 
-              'box_length', 
-              'box_width', 
+        dd = ['coord_x',
+              'coord_y',
+              'box_length',
+              'box_width',
               'angle',
               'area',
               'bounding_box_xmin',
@@ -423,9 +424,9 @@ def getBlobsTable(masked_image_file,
               'bounding_box_ymin',
               'bounding_box_ymax',
               'threshold']
-        
+
         float32_dtypes = [(x, np.float32) for x in dd]
-        
+
         plate_worms_dtype = np.dtype(int_dtypes + float32_dtypes)
         plate_worms = traj_fid.create_table('/',
                                             "plate_worms",
@@ -433,19 +434,19 @@ def getBlobsTable(masked_image_file,
                                             "Worm feature List",
                                             filters = TABLE_FILTERS)
 
-        
-        
+
+
         #find if it is a mask from fluorescence and save it in the new group
         plate_worms._v_attrs['is_light_background'] = is_light_background
         plate_worms._v_attrs['expected_fps'] = expected_fps
 
         #make sure it is in a "serializable" format
         plate_worms._v_attrs['bgnd_param'] = bytes(json.dumps(bgnd_param), 'utf-8')
-        
+
 
         read_and_save_timestamp(masked_image_file, trajectories_file)
         return plate_worms
-    
+
     progress_str = ' Calculating trajectories.'
     if len(bgnd_param) == 0:
         buff_generator = generateROIBuff(masked_image_file, buffer_size,  progress_str = progress_str)
@@ -456,9 +457,9 @@ def getBlobsTable(masked_image_file,
                       strel_size,
                       analysis_type,
                       thresh_block_size)
-        
+
         f_blob_data = partial(getBlobsData, blob_params = blob_params)
-        
+
     else:
         blob_params = (min_area,
                   worm_bw_thresh_factor,
@@ -467,18 +468,16 @@ def getBlobsTable(masked_image_file,
                                         bgnd_param = bgnd_param,
                                         progress_str = progress_str)
         f_blob_data = partial(getBlobsSimple, blob_params = blob_params)
-    
-    
+
+
     if n_cores_used > 1:
         p = mp.Pool(n_cores_used)
         blobs_generator = p.imap(f_blob_data, buff_generator)
     else:
         blobs_generator = map(f_blob_data, buff_generator)
-    
+
     with tables.open_file(trajectories_file, mode='w') as traj_fid:
         plate_worms = _ini_plate_worms(traj_fid, masked_image_file)
         for ibuf, blobs_data in enumerate(blobs_generator):
             if blobs_data:
                 plate_worms.append(blobs_data)
-             
-  

@@ -79,7 +79,7 @@ def getWormMask(
     # compute the thresholded mask
     worm_mask = worm_img < threshold if is_light_background else worm_img > threshold
     worm_mask = (worm_mask & (worm_img != 0)).astype(np.uint8)
-    
+
     # first compute a small closing to join possible fragments of the worm.
     worm_mask = cv2.morphologyEx(worm_mask, cv2.MORPH_CLOSE, strel_half)
 
@@ -91,7 +91,7 @@ def getWormMask(
     worm_mask = np.zeros_like(worm_mask)
     if worm_cnt.size > 0:
         cv2.drawContours(worm_mask, [worm_cnt.astype(np.int32)], 0, 1, -1)
-    
+
     # let's do closing with a larger structural element to close any gaps inside the worm.
     # It is faster to do several iterations rather than use a single larger
     # strel.
@@ -108,7 +108,7 @@ def getWormMask(
     worm_mask = np.zeros_like(worm_mask)
     if worm_cnt.size > 0:
         cv2.drawContours(worm_mask, [worm_cnt.astype(np.int32)], 0, 1, -1)
-    
+
     return worm_mask, worm_cnt, cnt_area
 
 
@@ -198,8 +198,8 @@ def _initSkeletonsArrays(ske_file_id, tot_rows, resampling_N, worm_midbody):
 
     # this is to initialize the arrays to one row, pytables do not accept empty arrays as initializers of carrays
     if tot_rows == 0:
-        tot_rows = 1  
-    
+        tot_rows = 1
+
     #define  dimession of each array, it is the only part of the array that varies
     data_dims = {}
     for data_str in ['skeleton', 'contour_side1', 'contour_side2']:
@@ -208,57 +208,57 @@ def _initSkeletonsArrays(ske_file_id, tot_rows, resampling_N, worm_midbody):
     data_dims['contour_width'] = (tot_rows, resampling_N)
     data_dims['width_midbody'] = (tot_rows,)
     data_dims['contour_area'] = (tot_rows,)
-    
+
     #create and reference all the arrays
     def _create_array(field, dims):
         if '/' + field in ske_file_id:
             ske_file_id.remove_node('/', field)
-            
-        return ske_file_id.create_carray('/', 
-                                  field, 
-                                  tables.Float32Atom(dflt=np.nan), 
-                                  dims, 
+
+        return ske_file_id.create_carray('/',
+                                  field,
+                                  tables.Float32Atom(dflt=np.nan),
+                                  dims,
                                   filters=TABLE_FILTERS)
-        
+
     skel_arrays = {field:_create_array(field, dims) for field, dims in data_dims.items()}
     inram_skel_arrays = {field:np.ones(dims, dtype=np.float32)*np.nan for field, dims in data_dims.items()}
-    
+
     # flags to mark if a frame was skeletonized
     traj_dat = ske_file_id.get_node('/trajectories_data')
     has_skeleton = traj_dat.cols.has_skeleton
     has_skeleton[:] = np.zeros_like(has_skeleton) #delete previous
-    
+
 #    return skel_arrays, has_skeleton
     return skel_arrays, has_skeleton, inram_skel_arrays
 
 
 
-def trajectories2Skeletons(skeletons_file, 
+def trajectories2Skeletons(skeletons_file,
                             masked_image_file,
-                            resampling_N=49, 
-                            min_blob_area=50, 
-                            strel_size=5, 
+                            resampling_N=49,
+                            min_blob_area=50,
+                            strel_size=5,
                             worm_midbody=(0.35, 0.65),
-                            analysis_type="WORM", 
-                            skel_args = {'num_segments' : 24, 
+                            analysis_type="WORM",
+                            skel_args = {'num_segments' : 24,
                                          'head_angle_thresh' : 60}
                             ):
-    
+
     #get the index number for the width limit
     midbody_ind = (int(np.floor(
         worm_midbody[0]*resampling_N)), int(np.ceil(worm_midbody[1]*resampling_N)))
-    
+
     #read trajectories data with pandas
     with pd.HDFStore(skeletons_file, 'r') as ske_file_id:
         trajectories_data = ske_file_id['/trajectories_data']
-    
+
     # extract the base name from the masked_image_file. This is used in the
     # progress status.
     base_name = masked_image_file.rpartition('.')[0].rpartition(os.sep)[-1]
     progress_prefix =  base_name + ' Calculating skeletons.'
-        
-    
-    
+
+
+
     # open skeleton file for append and #the compressed videos as read
     with tables.File(skeletons_file, "r+") as ske_file_id:
 
@@ -271,39 +271,39 @@ def trajectories2Skeletons(skeletons_file,
             #invert (at least if is_light_background is true)
             is_light_background = not is_light_background
 
-        
+
         #get generators to get the ROI for each frame
-        ROIs_generator = generateMoviesROI(masked_image_file, 
-                                         trajectories_data, 
+        ROIs_generator = generateMoviesROI(masked_image_file,
+                                         trajectories_data,
                                          bgnd_param = bgnd_param,
                                          progress_prefix = progress_prefix)
 
         # add data from the experiment info (currently only for singleworm)
-        with tables.File(masked_image_file, "r") as mask_fid:  
+        with tables.File(masked_image_file, "r") as mask_fid:
             if '/experiment_info' in ske_file_id:
                     ske_file_id.remove_node('/', 'experiment_info')
             if '/experiment_info' in mask_fid:
                 dd = mask_fid.get_node('/experiment_info').read()
                 ske_file_id.create_array('/', 'experiment_info', obj=dd)
-        
-                
+
+
         #initialize arrays to save the skeletons data
         tot_rows = len(trajectories_data)
-#        skel_arrays, has_skeleton = _initSkeletonsArrays(ske_file_id, 
-        skel_arrays, has_skeleton, inram_skel_arrays = _initSkeletonsArrays(ske_file_id, 
-                                                                                tot_rows, 
-                                                                                resampling_N, 
+#        skel_arrays, has_skeleton = _initSkeletonsArrays(ske_file_id,
+        skel_arrays, has_skeleton, inram_skel_arrays = _initSkeletonsArrays(ske_file_id,
+                                                                                tot_rows,
+                                                                                resampling_N,
                                                                                 worm_midbody)
-        
+
         # dictionary to store previous skeletons
         prev_skeleton = {}
-        
+
         for worms_in_frame in ROIs_generator:
             for ind, roi_dat in worms_in_frame.items():
                 row_data = trajectories_data.loc[ind]
                 worm_img, roi_corner = roi_dat
                 skeleton_id = int(row_data['skeleton_id'])
-                
+
                 # get the previous worm skeletons to orient them
                 worm_index = row_data['worm_index_joined']
                 if worm_index not in prev_skeleton:
@@ -312,30 +312,30 @@ def trajectories2Skeletons(skeletons_file,
                 if analysis_type == "ZEBRAFISH":
                      output = _zebra_func(worm_img, skel_args, resampling_N)
                 else:
-                    _, worm_cnt, _ = getWormMask(worm_img, 
-                                                 row_data['threshold'], 
+                    _, worm_cnt, _ = getWormMask(worm_img,
+                                                 row_data['threshold'],
                                                  strel_size,
-                                                 min_blob_area=row_data['area'] / 2, 
+                                                 min_blob_area=row_data['area'] / 2,
                                                  is_light_background = is_light_background)
                     # get skeletons
                     output = getSkeleton(worm_cnt, prev_skeleton[worm_index], resampling_N, **skel_args)
 
-                
-                
-                
+
+
+
                 if output is not None and output[0].size > 0:
                     skeleton, ske_len, cnt_side1, cnt_side2, cnt_widths, cnt_area = output
                     prev_skeleton[worm_index] = skeleton.copy()
 
                     #mark row as a valid skeleton
                     has_skeleton[skeleton_id] = True
-                    
+
                     # save segwrom_results
 #                    skel_arrays['skeleton_length'][skeleton_id] = ske_len
 #                    skel_arrays['contour_width'][skeleton_id, :] = cnt_widths
                     inram_skel_arrays['skeleton_length'][skeleton_id] = ske_len
                     inram_skel_arrays['contour_width'][skeleton_id, :] = cnt_widths
-                    
+
                     mid_width = np.median(cnt_widths[midbody_ind[0]:midbody_ind[1]+1])
 #                    skel_arrays['width_midbody'][skeleton_id] = mid_width
                     inram_skel_arrays['width_midbody'][skeleton_id] = mid_width
@@ -351,33 +351,33 @@ def trajectories2Skeletons(skeletons_file,
                     inram_skel_arrays['contour_area'][skeleton_id] = cnt_area
 #        import pdb
 #        pdb.set_trace()
-        
+
 #         now write on disk
         for key in inram_skel_arrays:
             skel_arrays[key][:] = inram_skel_arrays[key].astype(np.float32)
-        
+
 if __name__ == '__main__':
-    
+
     import shutil
     from tierpsy.helper.params.tracker_param import TrackerParams
-    
+
 #    root_dir = '/Volumes/behavgenom$/Andre/fishVideos/'
     root_dir = '/Users/lferiani/Desktop/Data_FOVsplitter/short'
-        
+
     #ff = 'N2_N10_F1-3_Set1_Pos7_Ch1_12112016_024337.hdf5'
     #ff = 'unc-9_N10_F1-3_Set1_Pos1_Ch5_17112016_193814.hdf5'
     #ff = 'trp-4_N1_Set3_Pos6_Ch1_19102016_172113.hdf5'
     #ff = 'trp-4_N10_F1-1_Set1_Pos2_Ch4_02112016_201534.hdf5'
     #ff = 'f3_ss_uncompressed.hdf5'
     ff = 'drugexperiment_1hr30minexposure_set1_bluelight_20190722_173404.22436248/metadata.hdf5'
-    masked_image_file = os.path.join(root_dir, 'MaskedVideos', ff)    
+    masked_image_file = os.path.join(root_dir, 'MaskedVideos', ff)
     skeletons_file = os.path.join(root_dir, 'Results', ff.replace('.hdf5', '_skeletons.hdf5'))
     # restore skeletons from backup
     shutil.copy(skeletons_file.replace('.hdf5','.bk'), skeletons_file)
 
 #    json_file = os.path.join(root_dir, 'f3_ss_uncompressed.json')
     json_file = '/Users/lferiani/Desktop/Data_FOVsplitter/loopbio_rig_96WP_upright_Hydra05.json'
-    
+
     # read parameters
     params = TrackerParams(json_file)
     p = params.p_dict
@@ -393,6 +393,6 @@ if __name__ == '__main__':
         'skel_args' : skel_args
         }
 
-    
+
 
     trajectories2Skeletons(skeletons_file, masked_image_file, **argkws_d)

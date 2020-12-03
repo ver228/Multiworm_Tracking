@@ -522,9 +522,8 @@ def getZebrafishMask(frame, config):
             cnt_area = cv2.contourArea(worm_cnt)
             output = worm_mask, worm_cnt, cnt_area, \
                    cleaned_mask, head_point, smoothed_points
-    
+
     if output is None:
         return [None]*6
     else:
         return output
-

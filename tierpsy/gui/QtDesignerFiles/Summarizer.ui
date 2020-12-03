@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>632</width>
-    <height>514</height>
+    <height>537</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -204,19 +204,15 @@ edited trajectories?</string>
     <item>
      <widget class="QWidget" name="SelectByKeywords" native="true">
       <layout class="QGridLayout" name="gridLayout_4">
-       <item row="0" column="0" colspan="2">
-        <widget class="QLabel" name="label_10">
-         <property name="text">
-          <string>Select features by keywords :</string>
-         </property>
-        </widget>
-       </item>
        <item row="2" column="0">
         <widget class="QLabel" name="label_9">
          <property name="text">
           <string>Exclude keywords</string>
          </property>
         </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QLineEdit" name="p_keywords_include"/>
        </item>
        <item row="2" column="1">
         <widget class="QLineEdit" name="p_keywords_exclude"/>
@@ -228,10 +224,28 @@ edited trajectories?</string>
          </property>
         </widget>
        </item>
-       <item row="1" column="1">
-        <widget class="QLineEdit" name="p_keywords_include"/>
+       <item row="0" column="0" colspan="2">
+        <widget class="QLabel" name="label_10">
+         <property name="text">
+          <string>Select features by keywords :</string>
+         </property>
+        </widget>
        </item>
       </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QCheckBox" name="p_abbreviate_features">
+      <property name="text">
+       <string>Abbreviate feature names</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QCheckBox" name="p_dorsal_side_known">
+      <property name="text">
+       <string>Dorsal side annotated</string>
+      </property>
      </widget>
     </item>
     <item>

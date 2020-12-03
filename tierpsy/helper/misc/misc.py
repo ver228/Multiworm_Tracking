@@ -38,7 +38,7 @@ try:
         FFPROBE_CMD = get_local_or_sys_path('ffprobe.exe')
     else:
         FFPROBE_CMD = get_local_or_sys_path('ffprobe')
-except FileNotFoundError: 
+except FileNotFoundError:
     FFPROBE_CMD = ''
     warnings.warn('ffprobe do not found. This might cause problems while extracting the raw videos timestamps.')
 
@@ -79,5 +79,3 @@ class ReadEnqueue():
         except Empty:
             line  = None
         return line
-
-
